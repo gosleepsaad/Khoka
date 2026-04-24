@@ -124,13 +124,19 @@ class _PGCursor:
         self._c.execute(_adapt(sql), params)
         return self
 
+    def _cols(self):
+        return [d[0] for d in (self._c.description or [])]
+
     def fetchone(self):
         r = self._c.fetchone()
-        return dict(r) if r else None
+        if r is None:
+            return None
+        return dict(zip(self._cols(), r))
 
     def fetchall(self):
+        cols = self._cols()
         rows = self._c.fetchall()
-        return [dict(r) for r in rows] if rows else []
+        return [dict(zip(cols, r)) for r in rows] if rows else []
 
 
 class _PGConn:
