@@ -99,19 +99,19 @@ def get_shop_context():
     week_ago = (date.today() - timedelta(days=7)).isoformat()
 
     # Today's sales
-    c.execute("SELECT COALESCE(SUM(total),0) FROM sales WHERE DATE(created_at)=?", (today,))
-    today_sales = c.fetchone()[0]
+    c.execute("SELECT COALESCE(SUM(total),0) as v FROM sales WHERE DATE(created_at)=?", (today,))
+    today_sales = c.fetchone()["v"]
 
     # Today's expenses
-    c.execute("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE DATE(created_at)=?", (today,))
-    today_exp = c.fetchone()[0]
+    c.execute("SELECT COALESCE(SUM(amount),0) as v FROM expenses WHERE DATE(created_at)=?", (today,))
+    today_exp = c.fetchone()["v"]
 
     # Total udhaar
     c.execute("""
-        SELECT COALESCE(SUM(CASE WHEN type='debit' THEN amount ELSE -amount END),0)
+        SELECT COALESCE(SUM(CASE WHEN type='debit' THEN amount ELSE -amount END),0) as v
         FROM udhaar_transactions
     """)
-    total_udhaar = c.fetchone()[0]
+    total_udhaar = c.fetchone()["v"]
 
     # Top items this week
     c.execute("""
