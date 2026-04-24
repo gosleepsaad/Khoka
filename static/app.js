@@ -626,7 +626,7 @@ const KhokaApp = (() => {
   async function loadDashboard() {
     const [dash, summary] = await Promise.all([
       fetch('/api/dashboard').then(r => r.json()),
-      fetch('/api/ai/summary').then(r => r.json()).catch(() => ({ summary: '' })),
+      fetch(`/api/ai/summary?language=${lang}`).then(r => r.json()).catch(() => ({ summary: '' })),
     ]);
 
     document.getElementById('dash-today-sales').textContent = `Rs ${fmt(dash.today_sales)}`;
@@ -649,7 +649,30 @@ const KhokaApp = (() => {
     }
 
     // Summary
-    document.getElementById('dash-summary-text').textContent = summary.summary || 'Loading...';
+    const summaryEl = document.getElementById('dash-summary-text');
+    summaryEl.innerHTML = formatAIText(summary.summary || 'Loading...');
+    summaryEl.dir = lang === 'ur' ? 'rtl' : 'ltr';
+  }
+
+  function speakSummary() {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const text = document.getElementById('dash-summary-text').innerText;
+    if (!text || text.includes('shimmer')) return;
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.lang = lang === 'ur' ? 'ur-PK' : 'en-US';
+    utt.rate = 0.9;
+    window.speechSynthesis.speak(utt);
+    const btn = document.getElementById('summary-speak-btn');
+    btn.textContent = '⏹';
+    utt.onend = () => { btn.textContent = '🔊'; };
+    btn.onclick = () => {
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        btn.textContent = '🔊';
+        btn.onclick = () => KhokaApp.speakSummary();
+      }
+    };
   }
 
   // ── Owner Udhaar ──────────────────────────────────────────────
@@ -1094,14 +1117,23 @@ const KhokaApp = (() => {
       const resp = await fetch('/api/ai/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({ question, language: lang }),
       });
       const data = await resp.json();
-      document.getElementById(thinkingId).textContent = data.answer || 'No response';
+      const el = document.getElementById(thinkingId);
+      el.innerHTML = formatAIText(data.answer || 'No response');
+      el.dir = lang === 'ur' ? 'rtl' : 'ltr';
     } catch {
       document.getElementById(thinkingId).textContent = '❌ Error connecting to AI';
     }
     scrollChatToBottom();
+  }
+
+  function formatAIText(text) {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '$1')  // strip **bold**
+      .replace(/\*(.*?)\*/g, '$1')       // strip *italic*
+      .replace(/\n/g, '<br>');
   }
 
   function appendChat(role, text) {
@@ -1109,7 +1141,12 @@ const KhokaApp = (() => {
     const id = 'msg-' + Date.now();
     el.id = id;
     el.className = `chat-bubble ${role}`;
-    el.textContent = text;
+    if (role === 'ai') {
+      el.innerHTML = formatAIText(text);
+      el.dir = lang === 'ur' ? 'rtl' : 'ltr';
+    } else {
+      el.textContent = text;
+    }
     document.getElementById('chat-messages').appendChild(el);
     scrollChatToBottom();
     return id;
@@ -1279,6 +1316,7 @@ const KhokaApp = (() => {
     showAddCategorySheet, addCategory, loadBuyList, completeBuyItem,
     showAddBuySheet, addBuyItem, loadInsights, sendChat, toggleMic,
     toggleMoreMenu, closeMoreMenu, openSheet, closeSheet, closeAllSheets,
+    speakSummary,
   };
 })();
 

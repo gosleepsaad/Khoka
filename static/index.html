@@ -123,7 +123,10 @@
       </div>
 
       <div id="dash-summary-card" class="summary-card">
-        <div class="summary-title" data-i18n="ai_daily_summary">AI Daily Summary</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div class="summary-title" data-i18n="ai_daily_summary">AI Daily Summary</div>
+          <button id="summary-speak-btn" onclick="KhokaApp.speakSummary()" style="background:none;border:none;font-size:20px;cursor:pointer;padding:4px;" title="Read aloud">🔊</button>
+        </div>
         <div class="summary-text" id="dash-summary-text">
           <div class="shimmer"></div>
           <div class="shimmer" style="width:80%"></div>

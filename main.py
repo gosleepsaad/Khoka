@@ -79,6 +79,7 @@ class BuyListAdd(BaseModel):
 
 class AskClaudeRequest(BaseModel):
     question: str
+    language: str = "en"  # "en" or "ur"
 
 
 # ─── Helper ──────────────────────────────────────────────────────────────────
@@ -698,10 +699,16 @@ async def ask_claude(body: AskClaudeRequest):
 
     context = get_shop_context()
 
+    if body.language == "ur":
+        lang_instruction = "IMPORTANT: Reply ONLY in pure Urdu script. Do NOT mix in English words or phrases — use Urdu equivalents for all terms (e.g. فروخت not sales, منافع not profit, روپے not Rs). Write all numbers in Western digits (1234) but keep all words in Urdu."
+    else:
+        lang_instruction = "IMPORTANT: Reply ONLY in English. Do not use any Urdu script."
+
     system_prompt = f"""You are a helpful business assistant for a Pakistani khoka (small shop) owner.
 You have access to the shop's complete data. Answer questions concisely and helpfully.
-Respond in whatever language the user used — English, Urdu, or Roman Urdu.
+{lang_instruction}
 Keep answers brief and practical. Use Pakistani Rupees (Rs) for amounts.
+Do NOT use markdown formatting — no asterisks, no bold, no bullet symbols. Use plain text with line breaks only.
 
 {context}"""
 
@@ -718,7 +725,7 @@ Keep answers brief and practical. Use Pakistani Rupees (Rs) for amounts.
 
 
 @app.get("/api/ai/summary")
-async def get_daily_summary():
+async def get_daily_summary(language: str = "en"):
     today = date.today().isoformat()
 
     # Return cached summary if exists
@@ -739,15 +746,15 @@ async def get_daily_summary():
 
     context = get_shop_context()
 
-    prompt = f"""Generate a concise daily business summary for a Pakistani khoka owner.
-Write in simple, friendly language. Include:
-- Total sales and profit today
-- Top selling items
-- Any udhaar changes
-- Items to restock
-- Any notable patterns
+    if language == "ur":
+        lang_instruction = "Write ONLY in pure Urdu script. Do NOT mix in English words — use Urdu for all terms. Use Western digits for numbers."
+    else:
+        lang_instruction = "Write ONLY in English."
 
-Keep it under 150 words. Be warm and practical.
+    prompt = f"""Generate a concise daily business summary for a Pakistani khoka owner.
+{lang_instruction}
+Include: total sales and profit today, top selling items, udhaar changes, items to restock, notable patterns.
+Keep it under 150 words. Be warm and practical. Use plain text only — no asterisks, no markdown.
 
 {context}"""
 
