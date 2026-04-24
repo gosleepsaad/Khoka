@@ -121,7 +121,7 @@ class _PGCursor:
         self.lastrowid = None
 
     def execute(self, sql, params=()):
-        self._c.execute(_adapt(sql), params or None)
+        self._c.execute(_adapt(sql), params)
         return self
 
     def fetchone(self):
