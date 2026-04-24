@@ -381,11 +381,21 @@ const KhokaApp = (() => {
     const matches = allCustomers.filter(c =>
       c.name.toLowerCase().includes(query.toLowerCase())
     );
-    if (!matches.length) { results.classList.remove('open'); return; }
 
-    results.innerHTML = matches.slice(0, 6).map(c =>
+    let html = matches.slice(0, 6).map(c =>
       `<div class="search-result-item" onclick="KhokaApp.selectUdhaarCustomer(${c.id}, '${escHtml(c.name)}')">${escHtml(c.name)}</div>`
     ).join('');
+
+    // Always show "create new" option so worker can add on the fly
+    const exactMatch = matches.find(c => c.name.toLowerCase() === query.toLowerCase());
+    if (!exactMatch) {
+      html += `<div class="search-result-item" style="color:var(--green);font-style:italic;"
+        onclick="KhokaApp.selectNewUdhaarCustomer('${escHtml(query)}')">
+        ➕ Add "${escHtml(query)}" as new customer
+      </div>`;
+    }
+
+    results.innerHTML = html;
     results.classList.add('open');
   }
 
@@ -395,14 +405,39 @@ const KhokaApp = (() => {
     document.getElementById('udhaar-search').value = name;
     document.getElementById('udhaar-search-results').classList.remove('open');
     document.getElementById('udhaar-selected-customer').style.display = 'inline-block';
-    document.getElementById('udhaar-selected-customer').textContent = name;
+    document.getElementById('udhaar-selected-customer').textContent = '✓ ' + name;
+  }
+
+  // Select a new (not-yet-created) customer by name — will be created on save
+  function selectNewUdhaarCustomer(name) {
+    selectedUdhaarCustomer = { id: null, name };
+    document.getElementById('udhaar-customer-id').value = '';
+    document.getElementById('udhaar-search').value = name;
+    document.getElementById('udhaar-search-results').classList.remove('open');
+    document.getElementById('udhaar-selected-customer').style.display = 'inline-block';
+    document.getElementById('udhaar-selected-customer').textContent = '✨ New: ' + name;
   }
 
   async function saveWorkerUdhaar() {
-    const custId = document.getElementById('udhaar-customer-id').value;
     const amount = parseFloat(document.getElementById('udhaar-amount').value);
     const note = document.getElementById('udhaar-note').value;
-    if (!custId || isNaN(amount) || amount <= 0) { toast(t('fill_required')); return; }
+    let custId = document.getElementById('udhaar-customer-id').value;
+    const typedName = document.getElementById('udhaar-search').value.trim();
+
+    if (!typedName || isNaN(amount) || amount <= 0) { toast(t('fill_required')); return; }
+
+    // Auto-create customer if not selected from list
+    if (!custId && typedName) {
+      const resp = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: typedName }),
+      });
+      const newCust = await resp.json();
+      allCustomers.push(newCust);
+      custId = newCust.id;
+      toast(`Customer "${typedName}" created`);
+    }
 
     await fetch('/api/udhaar', {
       method: 'POST',
@@ -505,10 +540,18 @@ const KhokaApp = (() => {
     const matches = allCustomers.filter(c =>
       c.name.toLowerCase().includes(query.toLowerCase())
     );
-    results.innerHTML = matches.slice(0, 6).map(c =>
+    let html = matches.slice(0, 6).map(c =>
       `<div class="search-result-item" onclick="KhokaApp.selectOwnerCustomer(${c.id}, '${escHtml(c.name)}')">${escHtml(c.name)}</div>`
     ).join('');
-    results.classList.toggle('open', matches.length > 0);
+    const exactMatch = matches.find(c => c.name.toLowerCase() === query.toLowerCase());
+    if (!exactMatch) {
+      html += `<div class="search-result-item" style="color:var(--green);font-style:italic;"
+        onclick="KhokaApp.selectNewOwnerCustomer('${escHtml(query)}')">
+        ➕ Add "${escHtml(query)}" as new customer
+      </div>`;
+    }
+    results.innerHTML = html;
+    results.classList.add('open');
   }
 
   function selectOwnerCustomer(id, name) {
@@ -517,14 +560,35 @@ const KhokaApp = (() => {
     document.getElementById('owner-udhaar-search').value = name;
     document.getElementById('owner-udhaar-results').classList.remove('open');
     document.getElementById('owner-udhaar-selected').style.display = 'inline-block';
-    document.getElementById('owner-udhaar-selected').textContent = name;
+    document.getElementById('owner-udhaar-selected').textContent = '✓ ' + name;
+  }
+
+  function selectNewOwnerCustomer(name) {
+    ownerSelectedCustomer = { id: null, name };
+    document.getElementById('owner-udhaar-cust-id').value = '';
+    document.getElementById('owner-udhaar-search').value = name;
+    document.getElementById('owner-udhaar-results').classList.remove('open');
+    document.getElementById('owner-udhaar-selected').style.display = 'inline-block';
+    document.getElementById('owner-udhaar-selected').textContent = '✨ New: ' + name;
   }
 
   async function saveOwnerUdhaar() {
-    const custId = document.getElementById('owner-udhaar-cust-id').value;
     const amount = parseFloat(document.getElementById('owner-udhaar-amount').value);
     const note = document.getElementById('owner-udhaar-note').value;
-    if (!custId || isNaN(amount) || amount <= 0) { toast(t('fill_required')); return; }
+    let custId = document.getElementById('owner-udhaar-cust-id').value;
+    const typedName = document.getElementById('owner-udhaar-search').value.trim();
+    if (!typedName || isNaN(amount) || amount <= 0) { toast(t('fill_required')); return; }
+
+    if (!custId && typedName) {
+      const resp = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: typedName }),
+      });
+      const newCust = await resp.json();
+      allCustomers.push(newCust);
+      custId = newCust.id;
+    }
 
     await fetch('/api/udhaar', {
       method: 'POST',
@@ -1047,8 +1111,9 @@ const KhokaApp = (() => {
     init, toggleLang, showScreen, openOwnerLogin, closePinModal, exitOwner,
     pinInput, pinClear, addToBill, adjustQty, clearBill, completeSale,
     showCustomItemSheet, addCustomItem, searchCustomers, selectUdhaarCustomer,
-    saveWorkerUdhaar, addNewCustomer, loadDashboard, loadOwnerCustomers,
-    showUdhaarTab, ownerSearchCustomers, selectOwnerCustomer, saveOwnerUdhaar,
+    selectNewUdhaarCustomer, saveWorkerUdhaar, addNewCustomer, loadDashboard,
+    loadOwnerCustomers, showUdhaarTab, ownerSearchCustomers, selectOwnerCustomer,
+    selectNewOwnerCustomer, saveOwnerUdhaar,
     showCustomerDetail, addPayment, loadSales, loadExpenses, addExpense,
     loadItems, showAddItemSheet, addItem, toggleLowStock, removeItem,
     showAddCategorySheet, addCategory, loadBuyList, completeBuyItem,
