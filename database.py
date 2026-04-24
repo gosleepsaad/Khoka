@@ -34,9 +34,17 @@ def _adapt(sql):
 
 def get_db():
     if IS_POSTGRES:
-        import psycopg2
-        import psycopg2.extras
-        conn = psycopg2.connect(_pg_url(), cursor_factory=psycopg2.extras.RealDictCursor)
+        import pg8000.dbapi as pg
+        from urllib.parse import urlparse
+        u = urlparse(_pg_url())
+        conn = pg.connect(
+            host=u.hostname,
+            user=u.username,
+            password=u.password,
+            database=u.path.lstrip("/"),
+            port=u.port or 5432,
+            ssl_context=True,
+        )
         return _PGConn(conn)
     else:
         conn = sqlite3.connect(DATABASE_PATH)
