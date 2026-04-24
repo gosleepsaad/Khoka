@@ -85,7 +85,12 @@ class AskClaudeRequest(BaseModel):
 
 def _coerce(v):
     from decimal import Decimal
-    return float(v) if isinstance(v, Decimal) else v
+    from datetime import date, datetime
+    if isinstance(v, Decimal):
+        return float(v)
+    if isinstance(v, (datetime, date)):
+        return v.isoformat()
+    return v
 
 def row_to_dict(row):
     return {k: _coerce(v) for k, v in row.items()} if row else None
