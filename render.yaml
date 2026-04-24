@@ -8,8 +8,4 @@ services:
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: DATABASE_PATH
-        value: /opt/render/project/src/khoka.db
-    disk:
-      name: khoka-data
-      mountPath: /opt/render/project/src
-      sizeGB: 1
+        value: /tmp/khoka.db
