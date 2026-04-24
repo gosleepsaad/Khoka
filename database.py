@@ -56,11 +56,15 @@ def get_db():
 
 # ── Row helpers ───────────────────────────────────────────────────
 
+def _coerce(v):
+    from decimal import Decimal
+    return float(v) if isinstance(v, Decimal) else v
+
 def row_to_dict(row):
-    return dict(row) if row else None
+    return {k: _coerce(v) for k, v in row.items()} if row else None
 
 def rows_to_list(rows):
-    return [dict(r) for r in rows] if rows else []
+    return [{k: _coerce(v) for k, v in r.items()} for r in rows] if rows else []
 
 
 # ── SQLite wrapper ────────────────────────────────────────────────

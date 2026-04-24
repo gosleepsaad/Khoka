@@ -100,18 +100,18 @@ def get_shop_context():
 
     # Today's sales
     c.execute("SELECT COALESCE(SUM(total),0) as v FROM sales WHERE DATE(created_at)=?", (today,))
-    today_sales = c.fetchone()["v"]
+    today_sales = float(c.fetchone()["v"])
 
     # Today's expenses
     c.execute("SELECT COALESCE(SUM(amount),0) as v FROM expenses WHERE DATE(created_at)=?", (today,))
-    today_exp = c.fetchone()["v"]
+    today_exp = float(c.fetchone()["v"])
 
     # Total udhaar
     c.execute("""
         SELECT COALESCE(SUM(CASE WHEN type='debit' THEN amount ELSE -amount END),0) as v
         FROM udhaar_transactions
     """)
-    total_udhaar = c.fetchone()["v"]
+    total_udhaar = float(c.fetchone()["v"])
 
     # Top items this week
     c.execute("""
