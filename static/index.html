@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1B5E20">
+  <title>Khoka</title>
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div id="offline-banner" data-i18n="offline_banner">
+  AI features require internet — AI فیچرز کے لیے انٹرنیٹ درکار ہے
+</div>
+
+<div id="app">
+  <!-- Top Bar -->
+  <div class="topbar">
+    <div class="topbar-title">🏪 Khoka</div>
+    <div class="topbar-actions">
+      <button class="lang-btn" onclick="KhokaApp.toggleLang()" id="lang-toggle-btn">اردو</button>
+      <button class="owner-btn" id="owner-toggle-btn" onclick="KhokaApp.openOwnerLogin()">
+        <span data-i18n="owner_btn">Owner</span> 🔒
+      </button>
+    </div>
+  </div>
+
+  <!-- Screen Wrapper -->
+  <div class="screen-wrap" id="screen-wrap">
+
+    <!-- ══════════════ WORKER SCREENS ══════════════ -->
+
+    <!-- Bill Calculator (screen: bill) -->
+    <div id="screen-bill" class="screen active">
+      <div id="bill-total-bar">
+        <div>
+          <div id="bill-total-label" data-i18n="total">Total</div>
+          <div id="bill-total-amount">Rs 0</div>
+        </div>
+        <button id="bill-clear-btn" onclick="KhokaApp.clearBill()" data-i18n="clear">Clear</button>
+      </div>
+      <div id="bill-items-bar" data-empty="No items yet"></div>
+      <div id="bill-grid" style="padding:8px 8px 130px;"></div>
+      <button id="done-btn" onclick="KhokaApp.completeSale()" disabled data-i18n="done_btn">
+        DONE — Rs 0
+      </button>
+    </div>
+
+    <!-- Add Udhaar (screen: worker-udhaar) -->
+    <div id="screen-worker-udhaar" class="screen">
+      <div class="card">
+        <div class="card-title" data-i18n="add_udhaar">Add Udhaar</div>
+
+        <div class="form-group">
+          <label data-i18n="customer_name">Customer Name</label>
+          <div class="search-box">
+            <input type="text" id="udhaar-search" placeholder="Search customer..." autocomplete="off"
+              oninput="KhokaApp.searchCustomers(this.value)"
+              data-i18n-placeholder="search_customer">
+          </div>
+          <div class="search-results" id="udhaar-search-results"></div>
+          <input type="hidden" id="udhaar-customer-id">
+          <div id="udhaar-selected-customer" style="display:none;"
+            class="chip chip-green mt-8" id="udhaar-selected-label"></div>
+        </div>
+
+        <div class="form-group">
+          <label data-i18n="amount">Amount (Rs)</label>
+          <input type="number" id="udhaar-amount" placeholder="0" inputmode="numeric">
+        </div>
+
+        <div class="form-group">
+          <label data-i18n="note_optional">Note (optional)</label>
+          <input type="text" id="udhaar-note" placeholder="e.g. Cigarettes" data-i18n-placeholder="note_placeholder">
+        </div>
+
+        <button class="btn btn-primary" onclick="KhokaApp.saveWorkerUdhaar()" data-i18n="save_udhaar">
+          💾 Save Udhaar
+        </button>
+      </div>
+
+      <div class="card mt-8">
+        <div class="card-title" data-i18n="or_add_new_customer">Or Add New Customer</div>
+        <div class="form-group">
+          <input type="text" id="new-cust-name" placeholder="Customer name" data-i18n-placeholder="customer_name">
+        </div>
+        <div class="form-group">
+          <input type="tel" id="new-cust-phone" placeholder="Phone number" data-i18n-placeholder="phone">
+        </div>
+        <button class="btn btn-secondary" onclick="KhokaApp.addNewCustomer()">
+          <span data-i18n="add_customer">+ Add Customer</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ══════════════ OWNER SCREENS ══════════════ -->
+
+    <!-- Dashboard (screen: dashboard) -->
+    <div id="screen-dashboard" class="screen">
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-label" data-i18n="today_sales">Today's Sales</div>
+          <div class="stat-value" id="dash-today-sales">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" data-i18n="today_profit">Today's Profit</div>
+          <div class="stat-value" id="dash-today-profit">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" data-i18n="total_udhaar">Total Udhaar</div>
+          <div class="stat-value red" id="dash-udhaar">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" data-i18n="low_stock">Low Stock</div>
+          <div class="stat-value amber" id="dash-low-stock">—</div>
+          <div class="stat-sub" data-i18n="items">items</div>
+        </div>
+      </div>
+
+      <div id="dash-summary-card" class="summary-card">
+        <div class="summary-title" data-i18n="ai_daily_summary">AI Daily Summary</div>
+        <div class="summary-text" id="dash-summary-text">
+          <div class="shimmer"></div>
+          <div class="shimmer" style="width:80%"></div>
+          <div class="shimmer" style="width:90%"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" data-i18n="top_items_week">Top Items This Week</div>
+        <div id="dash-top-items"></div>
+      </div>
+    </div>
+
+    <!-- Udhaar Manager (screen: udhaar) -->
+    <div id="screen-udhaar" class="screen">
+      <div class="tab-row">
+        <button class="tab-btn active" onclick="KhokaApp.showUdhaarTab('list')" data-tab="list" data-i18n="customer_list">Customer List</button>
+        <button class="tab-btn" onclick="KhokaApp.showUdhaarTab('add')" data-tab="add" data-i18n="add_udhaar">Add Udhaar</button>
+      </div>
+
+      <div id="udhaar-list-tab">
+        <div class="card">
+          <div id="udhaar-customer-list">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="udhaar-add-tab" style="display:none">
+        <div class="card">
+          <div class="form-group">
+            <label data-i18n="select_customer">Select Customer</label>
+            <div class="search-box">
+              <input type="text" id="owner-udhaar-search" placeholder="Search..."
+                oninput="KhokaApp.ownerSearchCustomers(this.value)"
+                data-i18n-placeholder="search_customer">
+            </div>
+            <div class="search-results" id="owner-udhaar-results"></div>
+            <div id="owner-udhaar-selected" style="display:none;" class="chip chip-green mt-8"></div>
+            <input type="hidden" id="owner-udhaar-cust-id">
+          </div>
+          <div class="form-group">
+            <label data-i18n="amount">Amount (Rs)</label>
+            <input type="number" id="owner-udhaar-amount" inputmode="numeric" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label data-i18n="note_optional">Note</label>
+            <input type="text" id="owner-udhaar-note" placeholder="e.g. Cigarettes">
+          </div>
+          <button class="btn btn-primary" onclick="KhokaApp.saveOwnerUdhaar()" data-i18n="save_udhaar">
+            Save Udhaar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Customer Detail (screen: customer-detail) -->
+    <div id="screen-customer-detail" class="screen">
+      <div class="card">
+        <button class="btn btn-sm btn-outline mb-8" onclick="KhokaApp.showScreen('udhaar')">← Back</button>
+        <div id="customer-detail-header"></div>
+      </div>
+      <div class="card">
+        <div class="card-title" data-i18n="payment">Add Payment</div>
+        <div class="form-group">
+          <input type="number" id="pay-amount" inputmode="numeric" placeholder="Rs 0">
+        </div>
+        <button class="btn btn-secondary" onclick="KhokaApp.addPayment()" data-i18n="mark_paid">Mark Paid</button>
+      </div>
+      <div class="card">
+        <div class="card-title" data-i18n="transaction_history">Transaction History</div>
+        <div id="customer-txn-list"></div>
+      </div>
+    </div>
+
+    <!-- Sales History (screen: sales) -->
+    <div id="screen-sales" class="screen">
+      <div class="filter-row">
+        <input type="date" id="sales-from">
+        <input type="date" id="sales-to">
+        <button class="btn btn-sm btn-secondary" onclick="KhokaApp.loadSales()" data-i18n="filter">Filter</button>
+      </div>
+      <div id="sales-list">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- Expense Log (screen: expenses) -->
+    <div id="screen-expenses" class="screen">
+      <div class="card">
+        <div class="card-title" data-i18n="add_expense">Add Expense</div>
+        <div class="form-group">
+          <label data-i18n="category">Category</label>
+          <select id="expense-cat">
+            <option value="restock">Restock / ری اسٹاک</option>
+            <option value="rent">Rent / کرایہ</option>
+            <option value="electricity">Electricity / بجلی</option>
+            <option value="other">Other / دیگر</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label data-i18n="amount">Amount (Rs)</label>
+          <input type="number" id="expense-amount" inputmode="numeric" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label data-i18n="note_optional">Note</label>
+          <input type="text" id="expense-note" placeholder="e.g. Cigarettes from Aslam supplier">
+        </div>
+        <button class="btn btn-primary" onclick="KhokaApp.addExpense()" data-i18n="add_expense_btn">Add Expense</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title" data-i18n="monthly_totals">Monthly Totals</div>
+        <div id="expense-monthly"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" data-i18n="recent_expenses">Recent Expenses</div>
+        <div id="expense-list">
+          <div class="loading"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Item Manager (screen: items) -->
+    <div id="screen-items" class="screen">
+      <div class="card mb-8">
+        <button class="btn btn-primary" onclick="KhokaApp.showAddItemSheet()" data-i18n="add_item">
+          + Add Item
+        </button>
+        <button class="btn btn-secondary mt-8" onclick="KhokaApp.showAddCategorySheet()" data-i18n="add_category">
+          + New Category
+        </button>
+      </div>
+      <div id="items-list">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- Buy List (screen: buylist) -->
+    <div id="screen-buylist" class="screen">
+      <div class="card mb-8">
+        <button class="btn btn-primary" onclick="KhokaApp.showAddBuySheet()" data-i18n="add_to_buy_list">
+          + Add to Buy List
+        </button>
+      </div>
+      <div class="card">
+        <div class="card-title" data-i18n="buy_list">Buy List</div>
+        <div id="buy-list-items">
+          <div class="loading"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Insights (screen: insights) -->
+    <div id="screen-insights" class="screen">
+      <div class="card mb-8">
+        <button class="btn btn-secondary" onclick="KhokaApp.loadInsights()" data-i18n="refresh">
+          🔄 Refresh Insights
+        </button>
+      </div>
+      <div id="insights-content">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- Ask Claude (screen: ask) -->
+    <div id="screen-ask" class="screen" style="padding:12px 12px 0;">
+      <div class="chat-messages" id="chat-messages">
+        <div class="chat-bubble ai" data-i18n="claude_welcome">
+          Assalam-o-Alaikum! I'm your shop assistant. Ask me anything about your business in English, Urdu, or Roman Urdu.
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /screen-wrap -->
+
+  <!-- Chat Input (only shown on Ask screen) -->
+  <div class="chat-input-row" id="chat-input-row" style="display:none;">
+    <button class="mic-btn" id="mic-btn" onclick="KhokaApp.toggleMic()" title="Voice input">🎤</button>
+    <input type="text" id="chat-input" placeholder="Ask about your shop..." data-i18n-placeholder="chat_placeholder">
+    <button class="send-btn" onclick="KhokaApp.sendChat()">➤</button>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav" id="bottom-nav">
+    <!-- Worker Nav -->
+    <button class="nav-btn active" id="nav-bill" onclick="KhokaApp.showScreen('bill')" data-i18n="bill">
+      <span class="icon">🧾</span>
+      <span data-i18n="nav_bill">Bill</span>
+    </button>
+    <button class="nav-btn" id="nav-worker-udhaar" onclick="KhokaApp.showScreen('worker-udhaar')" >
+      <span class="icon">📝</span>
+      <span data-i18n="nav_udhaar">Udhaar</span>
+    </button>
+    <!-- Owner Nav (hidden by default) -->
+    <button class="nav-btn hidden-owner" id="nav-dashboard" onclick="KhokaApp.showScreen('dashboard')" style="display:none;">
+      <span class="icon">📊</span>
+      <span data-i18n="nav_dashboard">Dashboard</span>
+    </button>
+    <button class="nav-btn hidden-owner" id="nav-udhaar" onclick="KhokaApp.showScreen('udhaar')" style="display:none;">
+      <span class="icon">💸</span>
+      <span data-i18n="nav_udhaar">Udhaar</span>
+    </button>
+    <button class="nav-btn hidden-owner" id="nav-sales" onclick="KhokaApp.showScreen('sales')" style="display:none;">
+      <span class="icon">📈</span>
+      <span data-i18n="nav_sales">Sales</span>
+    </button>
+    <button class="nav-btn hidden-owner" id="nav-more" onclick="KhokaApp.toggleMoreMenu()" style="display:none;">
+      <span class="icon">☰</span>
+      <span data-i18n="nav_more">More</span>
+    </button>
+    <button class="nav-btn" id="nav-worker-exit" onclick="KhokaApp.exitOwner()" style="display:none;">
+      <span class="icon">🔓</span>
+      <span data-i18n="nav_exit">Exit</span>
+    </button>
+  </nav>
+
+</div><!-- /app -->
+
+<!-- ═══════════ MODALS & SHEETS ═══════════ -->
+
+<!-- PIN Modal -->
+<div class="modal-overlay hidden" id="pin-modal">
+  <div class="modal">
+    <div class="modal-title" data-i18n="owner_login">Owner Login</div>
+    <div class="pin-dots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-error" id="pin-error" data-i18n="wrong_pin">Wrong PIN. Try again.</div>
+    <div class="pin-pad">
+      <button class="pin-key" onclick="KhokaApp.pinInput(1)">1</button>
+      <button class="pin-key" onclick="KhokaApp.pinInput(2)">2</button>
+      <button class="pin-key" onclick="KhokaApp.pinInput(3)">3</button>
+      <button class="pin-key" onclick="KhokaApp.pinInput(4)">4</button>
+      <button class="pin-key" onclick="KhokaApp.pinInput(5)">5</button>
+      <button class="pin-key" onclick="KhokaApp.pinInput(6)">6</button>
+      <button class="pin-key" onclick="KhokaApp.pinInput(7)">7</button>
+      <button class="pin-key" onclick="KhokaApp.pinInput(8)">8</button>
+      <button class="pin-key" onclick="KhokaApp.pinInput(9)">9</button>
+      <button class="pin-key" onclick="KhokaApp.pinClear()" style="font-size:16px;">⌫</button>
+      <button class="pin-key" onclick="KhokaApp.pinInput(0)">0</button>
+      <button class="pin-key" onclick="KhokaApp.closePinModal()" style="font-size:14px;" data-i18n="cancel">✕</button>
+    </div>
+  </div>
+</div>
+
+<!-- More Menu Sheet -->
+<div class="sheet hidden" id="more-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title" data-i18n="more">More</div>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <button class="btn btn-secondary" onclick="KhokaApp.showScreen('expenses');KhokaApp.closeMoreMenu()">
+      💰 <span data-i18n="expenses">Expenses</span>
+    </button>
+    <button class="btn btn-secondary" onclick="KhokaApp.showScreen('items');KhokaApp.closeMoreMenu()">
+      📦 <span data-i18n="item_manager">Item Manager</span>
+    </button>
+    <button class="btn btn-secondary" onclick="KhokaApp.showScreen('buylist');KhokaApp.closeMoreMenu()">
+      🛒 <span data-i18n="buy_list">Buy List</span>
+    </button>
+    <button class="btn btn-secondary" onclick="KhokaApp.showScreen('insights');KhokaApp.closeMoreMenu()">
+      🔍 <span data-i18n="ai_insights">AI Insights</span>
+    </button>
+    <button class="btn btn-secondary" onclick="KhokaApp.showScreen('ask');KhokaApp.closeMoreMenu()">
+      🤖 <span data-i18n="ask_claude">Ask Claude</span>
+    </button>
+  </div>
+</div>
+
+<!-- Custom Item Sheet -->
+<div class="sheet hidden" id="custom-item-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title" data-i18n="custom_item">Custom Item</div>
+  <div class="form-group">
+    <label data-i18n="item_name">Item Name</label>
+    <input type="text" id="custom-item-name" placeholder="Item name">
+  </div>
+  <div class="form-group">
+    <label data-i18n="price">Price (Rs)</label>
+    <input type="number" id="custom-item-price" inputmode="numeric" placeholder="0">
+  </div>
+  <button class="btn btn-primary" onclick="KhokaApp.addCustomItem()" data-i18n="add_to_bill">Add to Bill</button>
+  <button class="btn btn-secondary mt-8" onclick="KhokaApp.closeSheet('custom-item-sheet')" data-i18n="cancel">Cancel</button>
+</div>
+
+<!-- Add Item Sheet -->
+<div class="sheet hidden" id="add-item-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title" data-i18n="add_item">Add New Item</div>
+  <div class="form-group">
+    <label data-i18n="category">Category</label>
+    <select id="new-item-cat"></select>
+  </div>
+  <div class="form-group">
+    <label data-i18n="item_name">Name (English)</label>
+    <input type="text" id="new-item-name" placeholder="e.g. Red Bull">
+  </div>
+  <div class="form-group">
+    <label>نام (اردو)</label>
+    <input type="text" id="new-item-name-ur" placeholder="اردو نام">
+  </div>
+  <div class="form-group">
+    <label data-i18n="price">Price (Rs)</label>
+    <input type="number" id="new-item-price" inputmode="numeric" placeholder="0">
+  </div>
+  <button class="btn btn-primary" onclick="KhokaApp.addItem()" data-i18n="add_item">Add Item</button>
+  <button class="btn btn-secondary mt-8" onclick="KhokaApp.closeSheet('add-item-sheet')" data-i18n="cancel">Cancel</button>
+</div>
+
+<!-- Add Category Sheet -->
+<div class="sheet hidden" id="add-category-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title" data-i18n="add_category">New Category</div>
+  <div class="form-group">
+    <label>Name (English)</label>
+    <input type="text" id="new-cat-name" placeholder="e.g. Juices">
+  </div>
+  <div class="form-group">
+    <label>نام (اردو)</label>
+    <input type="text" id="new-cat-name-ur" placeholder="جوسز">
+  </div>
+  <button class="btn btn-primary" onclick="KhokaApp.addCategory()" data-i18n="add_category">Add Category</button>
+  <button class="btn btn-secondary mt-8" onclick="KhokaApp.closeSheet('add-category-sheet')" data-i18n="cancel">Cancel</button>
+</div>
+
+<!-- Add to Buy List Sheet -->
+<div class="sheet hidden" id="add-buy-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title" data-i18n="add_to_buy_list">Add to Buy List</div>
+  <div class="form-group">
+    <label data-i18n="item_name">Item Name</label>
+    <input type="text" id="buy-item-name" placeholder="e.g. Gold Leaf">
+  </div>
+  <div class="form-group">
+    <label data-i18n="note_optional">Note</label>
+    <input type="text" id="buy-item-note" placeholder="e.g. 10 packs">
+  </div>
+  <button class="btn btn-primary" onclick="KhokaApp.addBuyItem()" data-i18n="add">Add</button>
+  <button class="btn btn-secondary mt-8" onclick="KhokaApp.closeSheet('add-buy-sheet')" data-i18n="cancel">Cancel</button>
+</div>
+
+<!-- Sheet Backdrop -->
+<div id="sheet-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:45;"
+  onclick="KhokaApp.closeAllSheets()"></div>
+
+<!-- More Menu Backdrop -->
+<div id="more-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:45;"
+  onclick="KhokaApp.closeMoreMenu()"></div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
