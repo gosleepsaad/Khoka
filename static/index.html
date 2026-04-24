@@ -394,7 +394,73 @@
     <button class="btn btn-secondary" onclick="KhokaApp.showScreen('ask');KhokaApp.closeMoreMenu()">
       🤖 <span data-i18n="ask_claude">Ask Claude</span>
     </button>
+    <button class="btn btn-secondary" onclick="KhokaApp.showChangePinSheet();KhokaApp.closeMoreMenu()">
+      🔑 <span data-i18n="change_pin">Change PIN</span>
+    </button>
   </div>
+</div>
+
+<!-- Receipt / Done Sheet -->
+<div class="sheet hidden" id="receipt-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title">🧾 <span data-i18n="receipt">Receipt</span></div>
+  <div id="receipt-items" style="margin-bottom:12px;max-height:200px;overflow-y:auto;"></div>
+  <div class="flex-between" style="font-size:20px;font-weight:800;padding:10px 0;border-top:2px solid var(--border);">
+    <span data-i18n="total">Total</span>
+    <span id="receipt-total" class="text-green"></span>
+  </div>
+  <div style="display:flex;gap:10px;margin-top:12px;">
+    <button class="btn btn-primary" style="flex:1;" onclick="KhokaApp.finishSaleCash()">
+      💵 <span data-i18n="cash">Cash</span>
+    </button>
+    <button class="btn" style="flex:1;background:var(--red-pale);color:var(--red);font-weight:700;"
+      onclick="KhokaApp.startSaleUdhaar()">
+      📝 <span data-i18n="udhaar">Udhaar</span>
+    </button>
+  </div>
+</div>
+
+<!-- Udhaar Customer Picker Sheet (shown after tapping Udhaar on receipt) -->
+<div class="sheet hidden" id="sale-udhaar-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title">📝 <span data-i18n="add_to_udhaar">Add to Udhaar</span></div>
+  <div class="form-group">
+    <label data-i18n="customer_name">Customer Name</label>
+    <div class="search-box">
+      <input type="text" id="sale-udhaar-search" placeholder="Search or type new name..."
+        oninput="KhokaApp.searchSaleCustomers(this.value)" autocomplete="off">
+    </div>
+    <div class="search-results" id="sale-udhaar-results"></div>
+    <input type="hidden" id="sale-udhaar-cust-id">
+    <div id="sale-udhaar-selected" style="display:none;" class="chip chip-green mt-8"></div>
+  </div>
+  <button class="btn btn-primary" onclick="KhokaApp.finishSaleUdhaar()" data-i18n="save_udhaar">
+    Save Udhaar
+  </button>
+  <button class="btn btn-secondary mt-8" onclick="KhokaApp.closeSheet('sale-udhaar-sheet');KhokaApp.openSheet('receipt-sheet')" data-i18n="back">
+    ← Back
+  </button>
+</div>
+
+<!-- Change PIN Sheet -->
+<div class="sheet hidden" id="change-pin-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title">🔑 <span data-i18n="change_pin">Change PIN</span></div>
+  <div class="form-group">
+    <label data-i18n="current_pin">Current PIN</label>
+    <input type="password" id="current-pin-input" placeholder="••••" maxlength="4" inputmode="numeric">
+  </div>
+  <div class="form-group">
+    <label data-i18n="new_pin">New PIN (4 digits)</label>
+    <input type="password" id="new-pin-input" placeholder="••••" maxlength="4" inputmode="numeric">
+  </div>
+  <div class="form-group">
+    <label data-i18n="confirm_pin">Confirm New PIN</label>
+    <input type="password" id="confirm-pin-input" placeholder="••••" maxlength="4" inputmode="numeric">
+  </div>
+  <div id="pin-change-error" style="color:var(--red);font-size:13px;margin-bottom:8px;display:none;"></div>
+  <button class="btn btn-primary" onclick="KhokaApp.saveNewPin()" data-i18n="save_pin">Save PIN</button>
+  <button class="btn btn-secondary mt-8" onclick="KhokaApp.closeSheet('change-pin-sheet')" data-i18n="cancel">Cancel</button>
 </div>
 
 <!-- Custom Item Sheet -->

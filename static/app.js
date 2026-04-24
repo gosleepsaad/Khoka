@@ -38,6 +38,9 @@ const T = {
     hot_items: 'Hot Items This Week', slow_items: 'Slow Moving Items',
     best_time: 'Best Sales Time', udhaar_top: 'Highest Udhaar', restock: 'Restock Urgency',
     no_data: 'No data yet', yesterday: 'Yesterday', vs_yesterday: 'vs yesterday',
+    receipt: 'Receipt', cash: 'Cash', udhaar: 'Udhaar', add_to_udhaar: 'Add to Udhaar',
+    change_pin: 'Change PIN', current_pin: 'Current PIN', new_pin: 'New PIN (4 digits)',
+    confirm_pin: 'Confirm New PIN', save_pin: 'Save PIN', back: '← Back',
   },
   ur: {
     total: 'کل', clear: 'صاف', done_btn: 'مکمل',
@@ -72,6 +75,9 @@ const T = {
     section_other: 'دیگر', hot_items: 'مقبول ترین آئٹم', slow_items: 'سست آئٹم',
     best_time: 'بہترین وقت', udhaar_top: 'سب سے زیادہ ادھار', restock: 'ری اسٹاک ضرورت',
     no_data: 'ابھی کوئی ڈیٹا نہیں', yesterday: 'کل', vs_yesterday: 'کل کے مقابلے میں',
+    receipt: 'رسید', cash: 'نقد', udhaar: 'ادھار', add_to_udhaar: 'ادھار میں شامل',
+    change_pin: 'پن تبدیل کریں', current_pin: 'موجودہ پن', new_pin: 'نیا پن (4 ہندسے)',
+    confirm_pin: 'نئے پن کی تصدیق', save_pin: 'پن محفوظ کریں', back: '← واپس',
   },
 };
 
@@ -85,7 +91,7 @@ const KhokaApp = (() => {
   let categories = [];
   let bill = {}; // item_id -> {name, price, qty}
   let pinBuffer = '';
-  const CORRECT_PIN = '1234';
+  let correctPin = localStorage.getItem('khoka_pin') || '1234'; // cached, refreshed from server
   let allCustomers = [];
   let selectedUdhaarCustomer = null;
   let ownerSelectedCustomer = null;
@@ -194,7 +200,7 @@ const KhokaApp = (() => {
   }
 
   function checkPin() {
-    if (pinBuffer === CORRECT_PIN) {
+    if (pinBuffer === correctPin) {
       isOwner = true;
       closePinModal();
       enterOwnerMode();
@@ -204,6 +210,48 @@ const KhokaApp = (() => {
       updatePinDots();
       setTimeout(() => { document.getElementById('pin-error').style.display = 'none'; }, 1500);
     }
+  }
+
+  function showChangePinSheet() {
+    document.getElementById('current-pin-input').value = '';
+    document.getElementById('new-pin-input').value = '';
+    document.getElementById('confirm-pin-input').value = '';
+    document.getElementById('pin-change-error').style.display = 'none';
+    openSheet('change-pin-sheet');
+  }
+
+  async function saveNewPin() {
+    const current = document.getElementById('current-pin-input').value.trim();
+    const newPin = document.getElementById('new-pin-input').value.trim();
+    const confirm = document.getElementById('confirm-pin-input').value.trim();
+    const errEl = document.getElementById('pin-change-error');
+
+    if (newPin !== confirm) {
+      errEl.textContent = 'New PINs do not match';
+      errEl.style.display = 'block';
+      return;
+    }
+    if (!/^\d{4}$/.test(newPin)) {
+      errEl.textContent = 'PIN must be exactly 4 digits';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    const resp = await fetch('/api/settings/pin', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ current_pin: current, new_pin: newPin }),
+    });
+    if (!resp.ok) {
+      const data = await resp.json();
+      errEl.textContent = data.detail || 'Error changing PIN';
+      errEl.style.display = 'block';
+      return;
+    }
+    correctPin = newPin;
+    localStorage.setItem('khoka_pin', newPin);
+    closeSheet('change-pin-sheet');
+    toast('PIN changed successfully');
   }
 
   function enterOwnerMode() {
@@ -333,28 +381,132 @@ const KhokaApp = (() => {
     document.querySelectorAll('.item-btn').forEach(b => b.classList.remove('in-bill'));
   }
 
-  async function completeSale() {
+  // Pending sale data (set when receipt is shown, consumed on cash/udhaar)
+  let pendingSale = null;
+
+  function completeSale() {
     const items = Object.entries(bill);
     if (!items.length) return;
     const total = items.reduce((s, [, v]) => s + v.price * v.qty, 0);
 
-    const saleItems = items.map(([id, v]) => ({
-      item_id: isNaN(id) ? null : Number(id),
-      item_name: v.name,
-      price: v.price,
-      quantity: v.qty,
-    }));
+    pendingSale = {
+      items: items.map(([id, v]) => ({
+        item_id: isNaN(id) ? null : Number(id),
+        item_name: v.name,
+        price: v.price,
+        quantity: v.qty,
+      })),
+      total,
+    };
 
-    // Optimistic clear
+    // Show receipt sheet
+    const receiptItems = document.getElementById('receipt-items');
+    receiptItems.innerHTML = items.map(([, v]) => `
+      <div class="flex-between" style="padding:5px 0;border-bottom:1px solid var(--border);">
+        <span>${escHtml(v.name)} <span style="color:var(--text-muted);">×${v.qty}</span></span>
+        <span class="fw-bold">Rs ${fmt(v.price * v.qty)}</span>
+      </div>`).join('');
+    document.getElementById('receipt-total').textContent = `Rs ${fmt(total)}`;
+
+    // Reset udhaar picker
+    document.getElementById('sale-udhaar-search').value = '';
+    document.getElementById('sale-udhaar-cust-id').value = '';
+    document.getElementById('sale-udhaar-selected').style.display = 'none';
+    document.getElementById('sale-udhaar-results').classList.remove('open');
+
+    openSheet('receipt-sheet');
+  }
+
+  async function finishSaleCash() {
+    if (!pendingSale) return;
+    closeSheet('receipt-sheet');
     clearBill();
     toast(t('sale_done'));
-
-    // Fire and forget
     fetch('/api/sales', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items: saleItems, total }),
+      body: JSON.stringify(pendingSale),
     }).catch(() => {});
+    pendingSale = null;
+  }
+
+  function startSaleUdhaar() {
+    closeSheet('receipt-sheet');
+    openSheet('sale-udhaar-sheet');
+    document.getElementById('sale-udhaar-search').focus();
+  }
+
+  function searchSaleCustomers(query) {
+    const results = document.getElementById('sale-udhaar-results');
+    if (!query.trim()) { results.classList.remove('open'); return; }
+    const matches = allCustomers.filter(c =>
+      c.name.toLowerCase().includes(query.toLowerCase())
+    );
+    let html = matches.slice(0, 6).map(c =>
+      `<div class="search-result-item" onclick="KhokaApp.selectSaleCustomer(${c.id},'${escHtml(c.name)}')">${escHtml(c.name)}</div>`
+    ).join('');
+    const exact = matches.find(c => c.name.toLowerCase() === query.toLowerCase());
+    if (!exact) {
+      html += `<div class="search-result-item" style="color:var(--green);font-style:italic;"
+        onclick="KhokaApp.selectNewSaleCustomer('${escHtml(query)}')">
+        ➕ Add "${escHtml(query)}" as new customer
+      </div>`;
+    }
+    results.innerHTML = html;
+    results.classList.add('open');
+  }
+
+  function selectSaleCustomer(id, name) {
+    document.getElementById('sale-udhaar-cust-id').value = id;
+    document.getElementById('sale-udhaar-search').value = name;
+    document.getElementById('sale-udhaar-results').classList.remove('open');
+    document.getElementById('sale-udhaar-selected').style.display = 'inline-block';
+    document.getElementById('sale-udhaar-selected').textContent = '✓ ' + name;
+  }
+
+  function selectNewSaleCustomer(name) {
+    document.getElementById('sale-udhaar-cust-id').value = '';
+    document.getElementById('sale-udhaar-search').value = name;
+    document.getElementById('sale-udhaar-results').classList.remove('open');
+    document.getElementById('sale-udhaar-selected').style.display = 'inline-block';
+    document.getElementById('sale-udhaar-selected').textContent = '✨ New: ' + name;
+  }
+
+  async function finishSaleUdhaar() {
+    if (!pendingSale) return;
+    let custId = document.getElementById('sale-udhaar-cust-id').value;
+    const typedName = document.getElementById('sale-udhaar-search').value.trim();
+    if (!typedName) { toast(t('fill_required')); return; }
+
+    // Auto-create customer if needed
+    if (!custId && typedName) {
+      const resp = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: typedName }),
+      });
+      const newCust = await resp.json();
+      allCustomers.push(newCust);
+      custId = newCust.id;
+    }
+
+    closeSheet('sale-udhaar-sheet');
+    clearBill();
+    toast(`${t('udhaar_saved')} — ${typedName}`);
+
+    // Save sale then udhaar
+    const saleResp = await fetch('/api/sales', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(pendingSale),
+    });
+    const sale = await saleResp.json();
+    await fetch('/api/udhaar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customer_id: Number(custId), amount: pendingSale.total, note: 'Bill udhaar' }),
+    });
+    pendingSale = null;
   }
 
   function showCustomItemSheet() {
@@ -1076,6 +1228,11 @@ const KhokaApp = (() => {
     window.addEventListener('offline', () => document.getElementById('offline-banner').classList.add('show'));
     if (!navigator.onLine) document.getElementById('offline-banner').classList.add('show');
 
+    // Fetch live PIN from server
+    fetch('/api/settings/pin').then(r => r.json()).then(d => {
+      if (d.pin) { correctPin = d.pin; localStorage.setItem('khoka_pin', d.pin); }
+    }).catch(() => {});
+
     // Load items/categories
     try {
       const data = await fetch('/api/items').then(r => r.json());
@@ -1110,10 +1267,13 @@ const KhokaApp = (() => {
   return {
     init, toggleLang, showScreen, openOwnerLogin, closePinModal, exitOwner,
     pinInput, pinClear, addToBill, adjustQty, clearBill, completeSale,
+    finishSaleCash, startSaleUdhaar, searchSaleCustomers, selectSaleCustomer,
+    selectNewSaleCustomer, finishSaleUdhaar,
     showCustomItemSheet, addCustomItem, searchCustomers, selectUdhaarCustomer,
     selectNewUdhaarCustomer, saveWorkerUdhaar, addNewCustomer, loadDashboard,
     loadOwnerCustomers, showUdhaarTab, ownerSearchCustomers, selectOwnerCustomer,
     selectNewOwnerCustomer, saveOwnerUdhaar,
+    showChangePinSheet, saveNewPin,
     showCustomerDetail, addPayment, loadSales, loadExpenses, addExpense,
     loadItems, showAddItemSheet, addItem, toggleLowStock, removeItem,
     showAddCategorySheet, addCategory, loadBuyList, completeBuyItem,

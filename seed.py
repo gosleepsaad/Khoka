@@ -91,31 +91,26 @@ def weighted_choice(weights_dict):
 def seed():
     init_db()
     conn = get_db()
-    c = conn.cursor()
 
     # Check if already seeded
-    c.execute("SELECT COUNT(*) FROM categories")
-    if c.fetchone()[0] > 0:
+    row = conn.cursor().execute("SELECT COUNT(*) as cnt FROM categories").fetchone()
+    if (row or {}).get("cnt", 0) > 0:
         print("Database already seeded, skipping.")
         conn.close()
         return
 
     # Insert categories
-    c.executemany(
-        "INSERT INTO categories (id, name, name_ur, sort_order) VALUES (?,?,?,?)",
-        CATEGORIES,
-    )
+    for row in CATEGORIES:
+        conn.execute("INSERT INTO categories (id, name, name_ur, sort_order) VALUES (?,?,?,?)", row)
 
     # Insert items
-    c.executemany(
-        "INSERT INTO items (id, category_id, name, name_ur, price, is_active, is_low_stock, sort_order) VALUES (?,?,?,?,?,?,?,?)",
-        ITEMS,
-    )
+    for row in ITEMS:
+        conn.execute("INSERT INTO items (id, category_id, name, name_ur, price, is_active, is_low_stock, sort_order) VALUES (?,?,?,?,?,?,?,?)", row)
 
     # Insert customers
     now_str = datetime.now().isoformat()
     for cust in CUSTOMERS:
-        c.execute(
+        conn.execute(
             "INSERT INTO customers (id, name, phone, cnic, created_at) VALUES (?,?,?,?,?)",
             (*cust, now_str),
         )
@@ -152,12 +147,12 @@ def seed():
 
             total = sum(ITEM_PRICES[iid] * qty for iid, qty in chosen_items.items())
 
-            c.execute(
+            conn.execute(
                 "INSERT INTO sales (id, total, created_at) VALUES (?,?,?)",
                 (sale_id, total, sale_dt.isoformat()),
             )
             for item_id, qty in chosen_items.items():
-                c.execute(
+                conn.execute(
                     "INSERT INTO sale_items (sale_id, item_id, item_name, price, quantity) VALUES (?,?,?,?,?)",
                     (sale_id, item_id, ITEM_NAMES[item_id], ITEM_PRICES[item_id], qty),
                 )
@@ -176,7 +171,7 @@ def seed():
                 udhaar_balances[cust_id] += amount
                 txn_dt = datetime(txn_date.year, txn_date.month, txn_date.day,
                                   random.randint(8, 20), random.randint(0, 59))
-                c.execute(
+                conn.execute(
                     "INSERT INTO udhaar_transactions (id, customer_id, amount, type, note, created_at) VALUES (?,?,?,?,?,?)",
                     (udhaar_id, cust_id, amount, "debit", "Udhaar", txn_dt.isoformat()),
                 )
@@ -189,7 +184,7 @@ def seed():
                 udhaar_balances[cust_id] -= payment
                 txn_dt = datetime(txn_date.year, txn_date.month, txn_date.day,
                                   random.randint(8, 20), random.randint(0, 59))
-                c.execute(
+                conn.execute(
                     "INSERT INTO udhaar_transactions (id, customer_id, amount, type, note, created_at) VALUES (?,?,?,?,?,?)",
                     (udhaar_id, cust_id, payment, "credit", "Payment", txn_dt.isoformat()),
                 )
@@ -204,7 +199,7 @@ def seed():
         if random.random() < 0.7:
             amount = random.choice([500, 1000, 1500, 2000, 2500, 3000])
             exp_dt = datetime(exp_date.year, exp_date.month, exp_date.day, 8, 0)
-            c.execute(
+            conn.execute(
                 "INSERT INTO expenses (id, category, amount, note, created_at) VALUES (?,?,?,?,?)",
                 (expense_id, "restock", amount, "Daily restock from supplier", exp_dt.isoformat()),
             )
@@ -213,26 +208,26 @@ def seed():
         # Monthly expenses on day 1 of the seeded period (15 days ago)
         if days_ago == 15:
             monthly_dt = datetime(exp_date.year, exp_date.month, exp_date.day, 8, 0)
-            c.execute(
+            conn.execute(
                 "INSERT INTO expenses (id, category, amount, note, created_at) VALUES (?,?,?,?,?)",
                 (expense_id, "rent", 8000, "Monthly rent", monthly_dt.isoformat()),
             )
             expense_id += 1
-            c.execute(
+            conn.execute(
                 "INSERT INTO expenses (id, category, amount, note, created_at) VALUES (?,?,?,?,?)",
                 (expense_id, "electricity", 2500, "Electricity bill", monthly_dt.isoformat()),
             )
             expense_id += 1
 
     # Mark K2 Full and Morven Full as low stock for demo
-    c.execute("UPDATE items SET is_low_stock=1 WHERE id IN (9, 7)")
+    conn.execute("UPDATE items SET is_low_stock=1 WHERE id IN (9, 7)")
 
     # Add a couple of buy list items
-    c.execute(
+    conn.execute(
         "INSERT INTO buy_list (item_id, item_name, note, created_at) VALUES (?,?,?,?)",
         (9, "K2 Full", "Running low", datetime.now().isoformat()),
     )
-    c.execute(
+    conn.execute(
         "INSERT INTO buy_list (item_id, item_name, note, created_at) VALUES (?,?,?,?)",
         (7, "Morven Full", "Running low", datetime.now().isoformat()),
     )

@@ -87,7 +87,7 @@ def row_to_dict(row):
     return dict(row) if row else None
 
 def rows_to_list(rows):
-    return [dict(r) for r in rows]
+    return [dict(r) for r in rows] if rows else []
 
 
 def get_shop_context():
@@ -127,12 +127,13 @@ def get_shop_context():
 
     # Customers with udhaar
     c.execute("""
-        SELECT cu.name,
-               COALESCE(SUM(CASE WHEN ut.type='debit' THEN ut.amount ELSE -ut.amount END),0) as balance
-        FROM customers cu
-        LEFT JOIN udhaar_transactions ut ON ut.customer_id=cu.id
-        GROUP BY cu.id
-        HAVING balance > 0
+        SELECT name, balance FROM (
+            SELECT cu.name,
+                   COALESCE(SUM(CASE WHEN ut.type='debit' THEN ut.amount ELSE -ut.amount END),0) as balance
+            FROM customers cu
+            LEFT JOIN udhaar_transactions ut ON ut.customer_id=cu.id
+            GROUP BY cu.id, cu.name
+        ) sub WHERE balance > 0
         ORDER BY balance DESC
     """)
     udhaar_customers = rows_to_list(c.fetchall())
@@ -147,7 +148,7 @@ def get_shop_context():
 
     # Low stock items
     c.execute("SELECT name FROM items WHERE is_low_stock=1 AND is_active=1")
-    low_stock = [r[0] for r in c.fetchall()]
+    low_stock = [r["name"] for r in c.fetchall()]
 
     # Weekly sales trend
     c.execute("""
@@ -239,17 +240,16 @@ def get_categories():
 @app.post("/api/categories")
 def create_category(body: CategoryCreate):
     conn = get_db()
-    c = conn.cursor()
-    c.execute("SELECT MAX(sort_order) FROM categories")
-    max_sort = c.fetchone()[0] or 0
-    c.execute(
+    row = conn.cursor().execute("SELECT COALESCE(MAX(sort_order),0) as ms FROM categories").fetchone()
+    max_sort = row["ms"] if row else 0
+    cat_id = conn.insert(
         "INSERT INTO categories (name, name_ur, sort_order) VALUES (?,?,?)",
         (body.name, body.name_ur, max_sort + 1),
     )
-    cat_id = c.lastrowid
     conn.commit()
-    c.execute("SELECT * FROM categories WHERE id=?", (cat_id,))
-    cat = row_to_dict(c.fetchone())
+    c2 = conn.cursor()
+    c2.execute("SELECT * FROM categories WHERE id=?", (cat_id,))
+    cat = row_to_dict(c2.fetchone())
     conn.close()
     return cat
 
@@ -257,13 +257,12 @@ def create_category(body: CategoryCreate):
 @app.post("/api/items")
 def create_item(body: ItemCreate):
     conn = get_db()
-    c = conn.cursor()
-    c.execute(
+    item_id = conn.insert(
         "INSERT INTO items (category_id, name, name_ur, price, sort_order) VALUES (?,?,?,?,?)",
         (body.category_id, body.name, body.name_ur, body.price, body.sort_order),
     )
-    item_id = c.lastrowid
     conn.commit()
+    c = conn.cursor()
     c.execute("SELECT * FROM items WHERE id=?", (item_id,))
     item = row_to_dict(c.fetchone())
     conn.close()
@@ -335,12 +334,10 @@ def toggle_low_stock(item_id: int, body: dict = None):
 @app.post("/api/sales")
 def create_sale(body: SaleCreate):
     conn = get_db()
-    c = conn.cursor()
     now = datetime.now().isoformat()
-    c.execute("INSERT INTO sales (total, created_at) VALUES (?,?)", (body.total, now))
-    sale_id = c.lastrowid
+    sale_id = conn.insert("INSERT INTO sales (total, created_at) VALUES (?,?)", (body.total, now))
     for item in body.items:
-        c.execute(
+        conn.insert(
             "INSERT INTO sale_items (sale_id, item_id, item_name, price, quantity) VALUES (?,?,?,?,?)",
             (sale_id, item.item_id, item.item_name, item.price, item.quantity),
         )
@@ -394,23 +391,25 @@ def get_dashboard():
     yesterday = (date.today() - timedelta(days=1)).isoformat()
     week_ago = (date.today() - timedelta(days=7)).isoformat()
 
-    c.execute("SELECT COALESCE(SUM(total),0) FROM sales WHERE DATE(created_at)=?", (today,))
-    today_sales = c.fetchone()[0]
+    def scalar(cur): return list(cur.fetchone().values())[0]
 
-    c.execute("SELECT COALESCE(SUM(total),0) FROM sales WHERE DATE(created_at)=?", (yesterday,))
-    yesterday_sales = c.fetchone()[0]
+    c.execute("SELECT COALESCE(SUM(total),0) as v FROM sales WHERE DATE(created_at)=?", (today,))
+    today_sales = scalar(c)
 
-    c.execute("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE DATE(created_at)=?", (today,))
-    today_expenses = c.fetchone()[0]
+    c.execute("SELECT COALESCE(SUM(total),0) as v FROM sales WHERE DATE(created_at)=?", (yesterday,))
+    yesterday_sales = scalar(c)
+
+    c.execute("SELECT COALESCE(SUM(amount),0) as v FROM expenses WHERE DATE(created_at)=?", (today,))
+    today_expenses = scalar(c)
 
     c.execute("""
-        SELECT COALESCE(SUM(CASE WHEN type='debit' THEN amount ELSE -amount END),0)
+        SELECT COALESCE(SUM(CASE WHEN type='debit' THEN amount ELSE -amount END),0) as v
         FROM udhaar_transactions
     """)
-    total_udhaar = c.fetchone()[0]
+    total_udhaar = scalar(c)
 
-    c.execute("SELECT COUNT(*) FROM items WHERE is_low_stock=1 AND is_active=1")
-    low_stock_count = c.fetchone()[0]
+    c.execute("SELECT COUNT(*) as v FROM items WHERE is_low_stock=1 AND is_active=1")
+    low_stock_count = scalar(c)
 
     c.execute("""
         SELECT si.item_name, SUM(si.quantity) as qty
@@ -421,12 +420,21 @@ def get_dashboard():
     """, (week_ago,))
     top_items = rows_to_list(c.fetchall())
 
-    # Hourly sales today for best time analysis
-    c.execute("""
-        SELECT strftime('%H', created_at) as hour, COUNT(*) as count, SUM(total) as total
-        FROM sales WHERE DATE(created_at)=?
-        GROUP BY hour ORDER BY total DESC LIMIT 1
-    """, (today,))
+    # Hourly sales today for best time analysis (strftime is SQLite; use EXTRACT for PG)
+    from database import IS_POSTGRES
+    if IS_POSTGRES:
+        c.execute("""
+            SELECT LPAD(EXTRACT(HOUR FROM created_at::timestamp)::text,2,'0') as hour,
+                   COUNT(*) as count, SUM(total) as total
+            FROM sales WHERE DATE(created_at)=?
+            GROUP BY hour ORDER BY total DESC LIMIT 1
+        """, (today,))
+    else:
+        c.execute("""
+            SELECT strftime('%H', created_at) as hour, COUNT(*) as count, SUM(total) as total
+            FROM sales WHERE DATE(created_at)=?
+            GROUP BY hour ORDER BY total DESC LIMIT 1
+        """, (today,))
     best_hour_row = c.fetchone()
     best_hour = best_hour_row["hour"] if best_hour_row else None
 
@@ -450,11 +458,11 @@ def get_customers():
     conn = get_db()
     c = conn.cursor()
     c.execute("""
-        SELECT cu.*,
+        SELECT cu.id, cu.name, cu.phone, cu.cnic, cu.created_at,
                COALESCE(SUM(CASE WHEN ut.type='debit' THEN ut.amount ELSE -ut.amount END),0) as balance
         FROM customers cu
         LEFT JOIN udhaar_transactions ut ON ut.customer_id=cu.id
-        GROUP BY cu.id
+        GROUP BY cu.id, cu.name, cu.phone, cu.cnic, cu.created_at
         ORDER BY balance DESC
     """)
     customers = rows_to_list(c.fetchall())
@@ -465,14 +473,13 @@ def get_customers():
 @app.post("/api/customers")
 def create_customer(body: CustomerCreate):
     conn = get_db()
-    c = conn.cursor()
     now = datetime.now().isoformat()
-    c.execute(
+    cust_id = conn.insert(
         "INSERT INTO customers (name, phone, cnic, created_at) VALUES (?,?,?,?)",
         (body.name, body.phone, body.cnic, now),
     )
-    cust_id = c.lastrowid
     conn.commit()
+    c = conn.cursor()
     c.execute("SELECT * FROM customers WHERE id=?", (cust_id,))
     cust = row_to_dict(c.fetchone())
     cust["balance"] = 0
@@ -495,10 +502,10 @@ def get_customer_transactions(customer_id: int):
     """, (customer_id,))
     txns = rows_to_list(c.fetchall())
     c.execute("""
-        SELECT COALESCE(SUM(CASE WHEN type='debit' THEN amount ELSE -amount END),0)
+        SELECT COALESCE(SUM(CASE WHEN type='debit' THEN amount ELSE -amount END),0) as v
         FROM udhaar_transactions WHERE customer_id=?
     """, (customer_id,))
-    balance = c.fetchone()[0]
+    balance = list(c.fetchone().values())[0]
     conn.close()
     cust["balance"] = balance
     cust["transactions"] = txns
@@ -514,11 +521,10 @@ def add_udhaar(body: UdhaarCreate):
         conn.close()
         raise HTTPException(404, "Customer not found")
     now = datetime.now().isoformat()
-    c.execute(
+    txn_id = conn.insert(
         "INSERT INTO udhaar_transactions (customer_id, amount, type, note, created_at) VALUES (?,?,?,?,?)",
         (body.customer_id, body.amount, "debit", body.note or "Udhaar", now),
     )
-    txn_id = c.lastrowid
     conn.commit()
     conn.close()
     return {"id": txn_id, "ok": True}
@@ -533,7 +539,7 @@ def add_payment(customer_id: int, body: PaymentCreate):
         conn.close()
         raise HTTPException(404)
     now = datetime.now().isoformat()
-    c.execute(
+    conn.insert(
         "INSERT INTO udhaar_transactions (customer_id, amount, type, note, created_at) VALUES (?,?,?,?,?)",
         (customer_id, body.amount, "credit", body.note or "Payment", now),
     )
@@ -560,12 +566,20 @@ def get_expenses(date_from: Optional[str] = None, date_to: Optional[str] = None)
     c.execute(f"SELECT * FROM expenses {where_clause} ORDER BY created_at DESC LIMIT 100", params)
     expenses = rows_to_list(c.fetchall())
 
-    # Monthly totals
-    c.execute("""
-        SELECT strftime('%Y-%m', created_at) as month,
-               COALESCE(SUM(amount),0) as total
-        FROM expenses GROUP BY month ORDER BY month DESC LIMIT 3
-    """)
+    # Monthly totals — portable across SQLite and PostgreSQL
+    from database import IS_POSTGRES
+    if IS_POSTGRES:
+        c.execute("""
+            SELECT TO_CHAR(created_at::timestamp, 'YYYY-MM') as month,
+                   COALESCE(SUM(amount),0) as total
+            FROM expenses GROUP BY month ORDER BY month DESC LIMIT 3
+        """)
+    else:
+        c.execute("""
+            SELECT strftime('%Y-%m', created_at) as month,
+                   COALESCE(SUM(amount),0) as total
+            FROM expenses GROUP BY month ORDER BY month DESC LIMIT 3
+        """)
     monthly = rows_to_list(c.fetchall())
 
     conn.close()
@@ -575,13 +589,11 @@ def get_expenses(date_from: Optional[str] = None, date_to: Optional[str] = None)
 @app.post("/api/expenses")
 def create_expense(body: ExpenseCreate):
     conn = get_db()
-    c = conn.cursor()
     now = datetime.now().isoformat()
-    c.execute(
+    exp_id = conn.insert(
         "INSERT INTO expenses (category, amount, note, created_at) VALUES (?,?,?,?)",
         (body.category, body.amount, body.note, now),
     )
-    exp_id = c.lastrowid
     conn.commit()
     conn.close()
     return {"id": exp_id, "ok": True}
@@ -602,13 +614,11 @@ def get_buy_list():
 @app.post("/api/buy-list")
 def add_to_buy_list(body: BuyListAdd):
     conn = get_db()
-    c = conn.cursor()
     now = datetime.now().isoformat()
-    c.execute(
+    bl_id = conn.insert(
         "INSERT INTO buy_list (item_id, item_name, note, created_at) VALUES (?,?,?,?)",
         (body.item_id, body.item_name, body.note, now),
     )
-    bl_id = c.lastrowid
     conn.commit()
     conn.close()
     return {"id": bl_id, "ok": True}
@@ -619,6 +629,43 @@ def complete_buy_list(item_id: int):
     conn = get_db()
     c = conn.cursor()
     c.execute("UPDATE buy_list SET is_completed=1 WHERE id=?", (item_id,))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+# ─── Settings (PIN etc.) ─────────────────────────────────────────────────────
+
+class PinUpdate(BaseModel):
+    current_pin: str
+    new_pin: str
+
+@app.get("/api/settings/pin")
+def get_pin():
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT value FROM settings WHERE key='pin'")
+    row = c.fetchone()
+    conn.close()
+    return {"pin": row["value"] if row else "1234"}
+
+@app.put("/api/settings/pin")
+def update_pin(body: PinUpdate):
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT value FROM settings WHERE key='pin'")
+    row = c.fetchone()
+    current = row["value"] if row else "1234"
+    if body.current_pin != current:
+        conn.close()
+        raise HTTPException(400, "Current PIN is incorrect")
+    if not body.new_pin.isdigit() or len(body.new_pin) != 4:
+        conn.close()
+        raise HTTPException(400, "New PIN must be 4 digits")
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=?",
+        ("pin", body.new_pin, body.new_pin),
+    )
     conn.commit()
     conn.close()
     return {"ok": True}
@@ -705,11 +752,17 @@ Keep it under 150 words. Be warm and practical.
 
         # Cache it
         conn = get_db()
-        c = conn.cursor()
-        c.execute(
-            "INSERT OR REPLACE INTO ai_summary (date, summary, generated_at) VALUES (?,?,?)",
-            (today, summary, datetime.now().isoformat()),
-        )
+        from database import IS_POSTGRES
+        if IS_POSTGRES:
+            conn.execute(
+                "INSERT INTO ai_summary (date, summary, generated_at) VALUES (?,?,?) ON CONFLICT(date) DO UPDATE SET summary=?, generated_at=?",
+                (today, summary, datetime.now().isoformat(), summary, datetime.now().isoformat()),
+            )
+        else:
+            conn.execute(
+                "INSERT OR REPLACE INTO ai_summary (date, summary, generated_at) VALUES (?,?,?)",
+                (today, summary, datetime.now().isoformat()),
+            )
         conn.commit()
         conn.close()
 
@@ -752,12 +805,19 @@ async def get_ai_insights():
     sold_recent = set(r["item_name"] for r in c.fetchall())
     slow_items = list(sold_before - sold_recent)[:5]
 
-    # Best hour of day
-    c.execute("""
-        SELECT strftime('%H', created_at) as hour, SUM(total) as total
-        FROM sales WHERE DATE(created_at) >= ?
-        GROUP BY hour ORDER BY total DESC LIMIT 3
-    """, (week_ago,))
+    from database import IS_POSTGRES
+    if IS_POSTGRES:
+        c.execute("""
+            SELECT LPAD(EXTRACT(HOUR FROM created_at::timestamp)::text,2,'0') as hour, SUM(total) as total
+            FROM sales WHERE DATE(created_at) >= ?
+            GROUP BY hour ORDER BY total DESC LIMIT 3
+        """, (week_ago,))
+    else:
+        c.execute("""
+            SELECT strftime('%H', created_at) as hour, SUM(total) as total
+            FROM sales WHERE DATE(created_at) >= ?
+            GROUP BY hour ORDER BY total DESC LIMIT 3
+        """, (week_ago,))
     best_hours = rows_to_list(c.fetchall())
 
     # Daily sales trend
@@ -768,25 +828,27 @@ async def get_ai_insights():
     """, (week_ago,))
     daily_trend = rows_to_list(c.fetchall())
 
-    # Top udhaar customers
+    # Top udhaar customers — subquery to avoid HAVING alias issue
     c.execute("""
-        SELECT cu.name,
-               COALESCE(SUM(CASE WHEN ut.type='debit' THEN ut.amount ELSE -ut.amount END),0) as balance
-        FROM customers cu
-        LEFT JOIN udhaar_transactions ut ON ut.customer_id=cu.id
-        GROUP BY cu.id HAVING balance > 0
+        SELECT name, balance FROM (
+            SELECT cu.name,
+                   COALESCE(SUM(CASE WHEN ut.type='debit' THEN ut.amount ELSE -ut.amount END),0) as balance
+            FROM customers cu
+            LEFT JOIN udhaar_transactions ut ON ut.customer_id=cu.id
+            GROUP BY cu.id, cu.name
+        ) sub WHERE balance > 0
         ORDER BY balance DESC LIMIT 5
     """)
     top_udhaar = rows_to_list(c.fetchall())
 
-    # Restock urgency: items sold a lot this week that are low stock
+    # Restock urgency
     c.execute("""
-        SELECT i.name, SUM(si.quantity) as qty_sold, i.is_low_stock
+        SELECT i.name, COALESCE(SUM(si.quantity),0) as qty_sold, i.is_low_stock
         FROM items i
         LEFT JOIN sale_items si ON si.item_id=i.id
         LEFT JOIN sales s ON s.id=si.sale_id AND DATE(s.created_at) >= ?
         WHERE i.is_active=1
-        GROUP BY i.id
+        GROUP BY i.id, i.name, i.is_low_stock
         ORDER BY qty_sold DESC LIMIT 10
     """, (week_ago,))
     restock_urgency = rows_to_list(c.fetchall())
