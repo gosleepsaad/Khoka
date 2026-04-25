@@ -172,7 +172,7 @@ def get_shop_context():
     conn.close()
 
     context = f"""
-SHOP DATA — Khoka (Pakistan)
+SHOP DATA — Pakistani Corner Shop
 Date: {today}
 
 FINANCIALS:
@@ -700,11 +700,11 @@ async def ask_claude(body: AskClaudeRequest):
     context = get_shop_context()
 
     if body.language == "ur":
-        lang_instruction = "IMPORTANT: Reply ONLY in pure Urdu script. Do NOT mix in English words or phrases — use Urdu equivalents for all terms (e.g. فروخت not sales, منافع not profit, روپے not Rs). Write all numbers in Western digits (1234) but keep all words in Urdu."
+        lang_instruction = "IMPORTANT: Reply ONLY in pure Urdu script. Use دکان (not خوکہ). Do NOT mix in English words or phrases — use Urdu equivalents for all terms (e.g. فروخت not sales, منافع not profit, روپے not Rs). Write all numbers in Western digits (1234) but keep all words in Urdu."
     else:
-        lang_instruction = "IMPORTANT: Reply ONLY in English. Do not use any Urdu script."
+        lang_instruction = "IMPORTANT: Reply ONLY in English. Refer to the business as 'the shop' (not 'khoka'). Do not use any Urdu script."
 
-    system_prompt = f"""You are a helpful business assistant for a Pakistani khoka (small shop) owner.
+    system_prompt = f"""You are a helpful business assistant for a Pakistani corner shop owner.
 You have access to the shop's complete data. Answer questions concisely and helpfully.
 {lang_instruction}
 Keep answers brief and practical. Use Pakistani Rupees (Rs) for amounts.
@@ -727,11 +727,12 @@ Do NOT use markdown formatting — no asterisks, no bold, no bullet symbols. Use
 @app.get("/api/ai/summary")
 async def get_daily_summary(language: str = "en"):
     today = date.today().isoformat()
+    cache_key = f"{today}_{language}"   # separate cache per language
 
     # Return cached summary if exists
     conn = get_db()
     c = conn.cursor()
-    c.execute("SELECT summary FROM ai_summary WHERE date=?", (today,))
+    c.execute("SELECT summary FROM ai_summary WHERE date=?", (cache_key,))
     row = c.fetchone()
     if row:
         conn.close()
@@ -747,11 +748,11 @@ async def get_daily_summary(language: str = "en"):
     context = get_shop_context()
 
     if language == "ur":
-        lang_instruction = "Write ONLY in pure Urdu script. Do NOT mix in English words — use Urdu for all terms. Use Western digits for numbers."
+        lang_instruction = "Write ONLY in pure Urdu script. Use دکان (not خوکہ). Do NOT mix in English words — use Urdu for all terms. Use Western digits for numbers."
     else:
-        lang_instruction = "Write ONLY in English."
+        lang_instruction = "Write ONLY in English. Refer to the business as 'the shop' (not 'khoka')."
 
-    prompt = f"""Generate a concise daily business summary for a Pakistani khoka owner.
+    prompt = f"""Generate a concise daily business summary for a Pakistani corner shop owner.
 {lang_instruction}
 Include: total sales and profit today, top selling items, udhaar changes, items to restock, notable patterns.
 Keep it under 150 words. Be warm and practical. Use plain text only — no asterisks, no markdown.
@@ -766,18 +767,18 @@ Keep it under 150 words. Be warm and practical. Use plain text only — no aster
         )
         summary = message.content[0].text
 
-        # Cache it
+        # Cache it (keyed by date + language)
         conn = get_db()
         from database import IS_POSTGRES
         if IS_POSTGRES:
             conn.execute(
                 "INSERT INTO ai_summary (date, summary, generated_at) VALUES (?,?,?) ON CONFLICT(date) DO UPDATE SET summary=?, generated_at=?",
-                (today, summary, datetime.now().isoformat(), summary, datetime.now().isoformat()),
+                (cache_key, summary, datetime.now().isoformat(), summary, datetime.now().isoformat()),
             )
         else:
             conn.execute(
                 "INSERT OR REPLACE INTO ai_summary (date, summary, generated_at) VALUES (?,?,?)",
-                (today, summary, datetime.now().isoformat()),
+                (cache_key, summary, datetime.now().isoformat()),
             )
         conn.commit()
         conn.close()

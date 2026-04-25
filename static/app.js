@@ -255,9 +255,7 @@ const KhokaApp = (() => {
   }
 
   function enterOwnerMode() {
-    // Hide worker nav, show owner nav
     document.getElementById('nav-bill').style.display = 'none';
-    document.getElementById('nav-worker-udhaar').style.display = 'none';
     document.getElementById('nav-dashboard').style.display = '';
     document.getElementById('nav-udhaar').style.display = '';
     document.getElementById('nav-sales').style.display = '';
@@ -270,7 +268,6 @@ const KhokaApp = (() => {
   function exitOwner() {
     isOwner = false;
     document.getElementById('nav-bill').style.display = '';
-    document.getElementById('nav-worker-udhaar').style.display = '';
     document.getElementById('nav-dashboard').style.display = 'none';
     document.getElementById('nav-udhaar').style.display = 'none';
     document.getElementById('nav-sales').style.display = 'none';
@@ -657,22 +654,17 @@ const KhokaApp = (() => {
   function speakSummary() {
     if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
-    const text = document.getElementById('dash-summary-text').innerText;
-    if (!text || text.includes('shimmer')) return;
+    const el = document.getElementById('dash-summary-text');
+    const text = el.innerText.trim();
+    if (!text || text.length < 10) return;
     const utt = new SpeechSynthesisUtterance(text);
     utt.lang = lang === 'ur' ? 'ur-PK' : 'en-US';
     utt.rate = 0.9;
-    window.speechSynthesis.speak(utt);
     const btn = document.getElementById('summary-speak-btn');
     btn.textContent = '⏹';
-    utt.onend = () => { btn.textContent = '🔊'; };
-    btn.onclick = () => {
-      if (window.speechSynthesis.speaking) {
-        window.speechSynthesis.cancel();
-        btn.textContent = '🔊';
-        btn.onclick = () => KhokaApp.speakSummary();
-      }
-    };
+    utt.onend = utt.onerror = () => { btn.textContent = '🔊'; btn.onclick = () => KhokaApp.speakSummary(); };
+    btn.onclick = () => { window.speechSynthesis.cancel(); btn.textContent = '🔊'; btn.onclick = () => KhokaApp.speakSummary(); };
+    window.speechSynthesis.speak(utt);
   }
 
   // ── Owner Udhaar ──────────────────────────────────────────────
@@ -935,26 +927,80 @@ const KhokaApp = (() => {
   function showAddItemSheet() {
     const sel = document.getElementById('new-item-cat');
     sel.innerHTML = categories.map(c =>
-      `<option value="${c.id}">${escHtml(c.name)}</option>`
+      `<option value="${c.id}" data-name="${escHtml(c.name)}">${escHtml(c.name)}</option>`
     ).join('');
+    // Reset variant fields
+    document.getElementById('cig-variants-toggle').checked = false;
+    document.getElementById('cig-variants-row').style.display = 'none';
+    document.getElementById('single-price-group').style.display = '';
+    checkCigCategory();
+    sel.onchange = checkCigCategory;
     openSheet('add-item-sheet');
+  }
+
+  function checkCigCategory() {
+    const sel = document.getElementById('new-item-cat');
+    const selectedName = sel.options[sel.selectedIndex]?.dataset.name || '';
+    const isCig = selectedName.toLowerCase() === 'cigarettes';
+    document.getElementById('cig-variants-section').style.display = isCig ? '' : 'none';
+    if (!isCig) {
+      document.getElementById('cig-variants-toggle').checked = false;
+      document.getElementById('cig-variants-row').style.display = 'none';
+      document.getElementById('single-price-group').style.display = '';
+    }
+  }
+
+  function toggleCigVariants(checked) {
+    document.getElementById('cig-variants-row').style.display = checked ? '' : 'none';
+    document.getElementById('single-price-group').style.display = checked ? 'none' : '';
   }
 
   async function addItem() {
     const catId = Number(document.getElementById('new-item-cat').value);
     const name = document.getElementById('new-item-name').value.trim();
     const nameUr = document.getElementById('new-item-name-ur').value.trim();
-    const price = parseFloat(document.getElementById('new-item-price').value);
-    if (!name || isNaN(price) || price <= 0) { toast(t('fill_required')); return; }
-    await fetch('/api/items', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ category_id: catId, name, name_ur: nameUr, price }),
-    });
+    const useVariants = document.getElementById('cig-variants-toggle').checked;
+
+    if (!name) { toast(t('fill_required')); return; }
+
+    if (useVariants) {
+      // Create Full, Half, Single as separate items
+      const pFull   = parseFloat(document.getElementById('cig-price-full').value);
+      const pHalf   = parseFloat(document.getElementById('cig-price-half').value);
+      const pSingle = parseFloat(document.getElementById('cig-price-single').value);
+      if ([pFull, pHalf, pSingle].some(p => isNaN(p) || p <= 0)) { toast(t('fill_required')); return; }
+
+      const variants = [
+        { suffix: ' Full',   price: pFull,   sort: 1 },
+        { suffix: ' Half',   price: pHalf,   sort: 2 },
+        { suffix: ' Single', price: pSingle, sort: 3 },
+      ];
+      for (const v of variants) {
+        await fetch('/api/items', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ category_id: catId, name: name + v.suffix, name_ur: nameUr ? nameUr + v.suffix : '', price: v.price }),
+        });
+      }
+      toast(`${name} — 3 variants added`);
+    } else {
+      const price = parseFloat(document.getElementById('new-item-price').value);
+      if (isNaN(price) || price <= 0) { toast(t('fill_required')); return; }
+      await fetch('/api/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category_id: catId, name, name_ur: nameUr, price }),
+      });
+      toast(t('item_added'));
+    }
+
     document.getElementById('new-item-name').value = '';
     document.getElementById('new-item-name-ur').value = '';
     document.getElementById('new-item-price').value = '';
-    toast(t('item_added'));
+    document.getElementById('cig-price-full').value = '';
+    document.getElementById('cig-price-half').value = '';
+    document.getElementById('cig-price-single').value = '';
+    document.getElementById('cig-variants-toggle').checked = false;
     closeSheet('add-item-sheet');
     loadItems();
   }
@@ -1001,7 +1047,7 @@ const KhokaApp = (() => {
           ${escHtml(item.item_name)}
           ${item.note ? `<div class="text-muted" style="font-size:12px;">${escHtml(item.note)}</div>` : ''}
         </div>
-        <a class="tajir-btn" href="https://tajir.pk" target="_blank" rel="noopener">📦 Tajir</a>
+        <a class="tajir-btn" href="https://www.tajir.app/buyers" target="_blank" rel="noopener">📦 Tajir</a>
         <button class="btn btn-sm btn-secondary" onclick="KhokaApp.completeBuyItem(${item.id})">✓</button>
       </div>`).join('');
   }
@@ -1312,7 +1358,7 @@ const KhokaApp = (() => {
     selectNewOwnerCustomer, saveOwnerUdhaar,
     showChangePinSheet, saveNewPin,
     showCustomerDetail, addPayment, loadSales, loadExpenses, addExpense,
-    loadItems, showAddItemSheet, addItem, toggleLowStock, removeItem,
+    loadItems, showAddItemSheet, addItem, toggleLowStock, removeItem, toggleCigVariants,
     showAddCategorySheet, addCategory, loadBuyList, completeBuyItem,
     showAddBuySheet, addBuyItem, loadInsights, sendChat, toggleMic,
     toggleMoreMenu, closeMoreMenu, openSheet, closeSheet, closeAllSheets,
