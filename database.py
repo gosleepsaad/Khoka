@@ -333,6 +333,22 @@ CREATE TABLE IF NOT EXISTS settings (
 """
 
 
+def _fix_pg_sequences(conn):
+    """Reset PostgreSQL SERIAL sequences to max(id) so inserts work after explicit-ID seeding."""
+    tables = ['categories', 'items', 'sales', 'sale_items', 'customers',
+              'udhaar_transactions', 'expenses', 'buy_list']
+    for table in tables:
+        try:
+            c = conn.execute(
+                f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), "
+                f"COALESCE((SELECT MAX(id) FROM {table}), 1))"
+            )
+            c.fetchone()
+        except Exception:
+            pass
+    conn.commit()
+
+
 def init_db():
     conn = get_db()
     conn.executescript(_POSTGRES_SCHEMA if IS_POSTGRES else _SQLITE_SCHEMA)
@@ -345,4 +361,6 @@ def init_db():
             conn.commit()
     except Exception:
         pass
+    if IS_POSTGRES:
+        _fix_pg_sequences(conn)
     conn.close()

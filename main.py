@@ -230,7 +230,7 @@ def get_items():
                 "id": r["id"],
                 "name": r["name"],
                 "name_ur": r["name_ur"],
-                "price": r["price"],
+                "price": _coerce(r["price"]),
                 "is_low_stock": r["is_low_stock"],
                 "sort_order": r["sort_order"],
             })
@@ -401,7 +401,7 @@ def get_dashboard():
     yesterday = (date.today() - timedelta(days=1)).isoformat()
     week_ago = (date.today() - timedelta(days=7)).isoformat()
 
-    def scalar(cur): return list(cur.fetchone().values())[0]
+    def scalar(cur): return _coerce(list(cur.fetchone().values())[0])
 
     c.execute("SELECT COALESCE(SUM(total),0) as v FROM sales WHERE DATE(created_at)=?", (today,))
     today_sales = scalar(c)
@@ -515,7 +515,7 @@ def get_customer_transactions(customer_id: int):
         SELECT COALESCE(SUM(CASE WHEN type='debit' THEN amount ELSE -amount END),0) as v
         FROM udhaar_transactions WHERE customer_id=?
     """, (customer_id,))
-    balance = list(c.fetchone().values())[0]
+    balance = _coerce(list(c.fetchone().values())[0])
     conn.close()
     cust["balance"] = balance
     cust["transactions"] = txns
