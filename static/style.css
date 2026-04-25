@@ -2,14 +2,14 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  /* Brand palette — deep maroon, rich and easy on the eyes */
+  /* Brand palette — deep maroon */
   --primary:       #8B1A2A;
   --primary-dark:  #5C1018;
   --primary-mid:   #701422;
   --primary-light: #B02438;
-  --primary-pale:  #FDF0F2;
+  --primary-pale:  #FBF0F2;
 
-  /* Semantic colours — keep green/amber/red for financial meaning */
+  /* Semantic colours */
   --green:      #15803D;
   --green-light:#16A34A;
   --green-pale: #DCFCE7;
@@ -18,16 +18,16 @@
   --amber:      #D97706;
   --amber-pale: #FEF9C3;
 
-  /* Surfaces — warm off-white, no harsh brightness */
-  --text:      #1C0A0D;
-  --text-muted:#7A5865;
-  --border:    #EDD5D9;
+  /* Surfaces — clean, modern neutrals */
+  --text:      #1A1A1A;
+  --text-muted:#6B7280;
+  --border:    #E8E3E5;
   --card-bg:   #FFFFFF;
-  --body-bg:   #FFF9FA;
+  --body-bg:   #F7F5F6;
 
-  --shadow:    0 2px 8px rgba(92, 16, 24, .10);
-  --shadow-sm: 0 1px 3px rgba(92, 16, 24, .07);
-  --radius:    12px;
+  --shadow:    0 2px 10px rgba(0, 0, 0, .08);
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, .06);
+  --radius:    10px;
   --radius-sm: 8px;
   font-size: 16px;
 }
@@ -101,7 +101,7 @@ html, body {
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
 }
-.screen { display: none; padding: 12px 12px 80px; }
+.screen { display: none; padding: 12px 12px calc(80px + env(safe-area-inset-bottom, 0)); }
 .screen.active { display: block; }
 
 /* ── Bottom Nav ── */
@@ -114,6 +114,7 @@ html, body {
   display: flex;
   flex-shrink: 0;
   z-index: 20;
+  padding-bottom: env(safe-area-inset-bottom, 0);
 }
 .nav-btn {
   flex: 1;
@@ -288,7 +289,7 @@ html, body {
 
 #done-btn {
   position: fixed;
-  bottom: 68px;
+  bottom: calc(68px + env(safe-area-inset-bottom, 0));
   left: 50%;
   transform: translateX(-50%);
   width: calc(100% - 24px);
@@ -576,7 +577,7 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   gap: 8px;
   align-items: center;
-  padding: 10px 12px 80px;
+  padding: 10px 12px calc(80px + env(safe-area-inset-bottom, 0));
   background: var(--body-bg);
 }
 .chat-input-row input {
@@ -663,6 +664,8 @@ input:focus, select:focus, textarea:focus {
   font-weight: 700;
   cursor: pointer;
   transition: background .1s;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 .pin-key:active { background: var(--primary-pale); }
 .pin-error { color: var(--red); font-size: 14px; text-align: center; margin-top: 8px; display: none; }
@@ -827,25 +830,51 @@ input:focus, select:focus, textarea:focus {
 /* Toast */
 #toast {
   position: fixed;
-  bottom: 80px;
+  bottom: calc(80px + env(safe-area-inset-bottom, 0));
   left: 50%;
   transform: translateX(-50%) translateY(20px);
-  background: rgba(28, 20, 16, .90);
+  background: rgba(20, 20, 20, .92);
   color: #fff;
-  padding: 10px 20px;
+  padding: 11px 22px;
   border-radius: 24px;
   font-size: 14px;
   font-weight: 600;
-  z-index: 200;
+  z-index: 500;
   opacity: 0;
   transition: opacity .2s, transform .2s;
   pointer-events: none;
   white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0,0,0,.25);
 }
 #toast.show {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
+
+/* Scroll-to-top button */
+#scroll-top-btn {
+  position: fixed;
+  bottom: calc(80px + env(safe-area-inset-bottom, 0));
+  right: 16px;
+  width: 38px;
+  height: 38px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  font-size: 18px;
+  font-weight: 800;
+  cursor: pointer;
+  z-index: 30;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 10px rgba(0,0,0,.28);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  line-height: 1;
+}
+#scroll-top-btn.visible { display: flex; }
 
 /* Date filter row */
 .filter-row {
@@ -884,3 +913,56 @@ input:focus, select:focus, textarea:focus {
 }
 #cig-variants-row .form-group { margin-bottom: 0; }
 #cig-variants-row label { font-size: 11px; }
+
+/* Ask Claude topbar button */
+.ask-btn {
+  background: rgba(255,255,255,.18);
+  border: none;
+  color: #fff;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 17px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.ask-btn:active { background: rgba(255,255,255,.35); }
+
+/* Dashboard shortcuts grid */
+.dashboard-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.shortcut-btn {
+  background: var(--body-bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 4px 8px;
+  text-align: center;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 64px;
+  transition: background .12s, border-color .12s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.shortcut-icon { font-size: 22px; line-height: 1; }
+.shortcut-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+.shortcut-btn:active {
+  background: var(--primary-pale);
+  border-color: var(--primary-light);
+}

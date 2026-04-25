@@ -29,10 +29,10 @@ const T = {
     bill: 'Bill', offline_banner: 'AI features require internet',
     claude_welcome: "Assalam-o-Alaikum! I'm your shop assistant. Ask me anything about your business in English, Urdu, or Roman Urdu.",
     chat_placeholder: 'Ask about your shop...', send: 'Send',
-    no_items: 'No items yet', sale_done: 'Sale completed!',
-    udhaar_saved: 'Udhaar saved', customer_added: 'Customer added',
+    no_items: 'No items yet', sale_done: 'Sale completed! ✓',
+    udhaar_saved: 'Udhaar saved ✓', customer_added: 'Customer added',
     expense_added: 'Expense added', item_added: 'Item added',
-    fill_required: 'Please fill required fields', paid: 'Paid',
+    fill_required: 'Please fill required fields', paid: 'Payment recorded ✓',
     order_tajir: 'Order via Tajir', done: 'Done', section_cig: 'Cigarettes',
     section_drinks: 'Cold Drinks', section_snacks: 'Snacks', section_other: 'Other',
     hot_items: 'Hot Items This Week', slow_items: 'Slow Moving Items',
@@ -41,6 +41,15 @@ const T = {
     receipt: 'Receipt', cash: 'Cash', udhaar: 'Udhaar', add_to_udhaar: 'Add to Udhaar',
     change_pin: 'Change PIN', current_pin: 'Current PIN', new_pin: 'New PIN (4 digits)',
     confirm_pin: 'Confirm New PIN', save_pin: 'Save PIN', back: '← Back',
+    add_as_new_customer: 'Add as new customer',
+    settle_udhaar: 'Settle Udhaar',
+    customer_created: 'New customer added',
+    item_removed: 'Item removed',
+    pin_changed: 'PIN changed successfully!',
+    pin_no_match: 'PINs do not match',
+    pin_invalid: 'PIN must be exactly 4 digits',
+    balance: 'Balance',
+    quick_access: 'Quick Access',
   },
   ur: {
     total: 'کل', clear: 'صاف', done_btn: 'مکمل',
@@ -50,13 +59,13 @@ const T = {
     cancel: 'رد کریں', add_udhaar: 'ادھار ڈالیں', customer_name: 'گاہک کا نام',
     search_customer: 'گاہک تلاش کریں...', amount: 'رقم (روپے)',
     note_optional: 'نوٹ (اختیاری)', note_placeholder: 'مثال: سگریٹ',
-    save_udhaar: 'ادھار محفوظ', or_add_new_customer: 'یا نیا گاہک',
+    save_udhaar: 'ادھار محفوظ کریں', or_add_new_customer: 'یا نیا گاہک شامل کریں',
     add_customer: '+ گاہک شامل', phone: 'فون نمبر',
     today_sales: 'آج کی فروخت', today_profit: 'آج کا منافع',
     total_udhaar: 'کل ادھار', low_stock: 'کم اسٹاک', items: 'اشیاء',
     ai_daily_summary: 'AI روزانہ خلاصہ', top_items_week: 'اس ہفتے کے بہترین آئٹم',
     customer_list: 'گاہکوں کی فہرست', select_customer: 'گاہک منتخب کریں',
-    payment: 'ادائیگی', mark_paid: 'ادائیگی شامل', transaction_history: 'لین دین کی تاریخ',
+    payment: 'ادائیگی شامل کریں', mark_paid: 'ادائیگی شامل', transaction_history: 'لین دین کی تاریخ',
     filter: 'فلٹر', add_expense: 'خرچ ڈالیں', add_expense_btn: 'خرچ ڈالیں',
     category: 'قسم', monthly_totals: 'ماہانہ کل', recent_expenses: 'حالیہ اخراجات',
     add_item: '+ آئٹم ڈالیں', add_category: '+ نئی قسم', item_manager: 'آئٹم مینیجر',
@@ -67,10 +76,11 @@ const T = {
     bill: 'بل', offline_banner: 'AI فیچرز کے لیے انٹرنیٹ درکار ہے',
     claude_welcome: 'السلام علیکم! میں آپ کا دکان کا مددگار ہوں۔ اردو، انگریزی یا رومن اردو میں پوچھیں۔',
     chat_placeholder: 'اپنی دکان کے بارے میں پوچھیں...',
-    no_items: 'ابھی کوئی آئٹم نہیں', sale_done: 'سیل مکمل!',
-    udhaar_saved: 'ادھار محفوظ', customer_added: 'گاہک شامل', expense_added: 'خرچ شامل',
+    send: 'بھیجیں',
+    no_items: 'ابھی کوئی آئٹم نہیں', sale_done: 'سیل مکمل! ✓',
+    udhaar_saved: 'ادھار محفوظ ✓', customer_added: 'گاہک شامل', expense_added: 'خرچ شامل',
     item_added: 'آئٹم شامل', fill_required: 'ضروری خانے پُر کریں',
-    paid: 'ادا', order_tajir: 'تاجر سے آرڈر', done: 'ہو گیا',
+    paid: 'ادائیگی درج ✓', order_tajir: 'تاجر سے آرڈر', done: 'ہو گیا',
     section_cig: 'سگریٹ', section_drinks: 'ٹھنڈے مشروبات', section_snacks: 'نمکین',
     section_other: 'دیگر', hot_items: 'مقبول ترین آئٹم', slow_items: 'سست آئٹم',
     best_time: 'بہترین وقت', udhaar_top: 'سب سے زیادہ ادھار', restock: 'ری اسٹاک ضرورت',
@@ -78,6 +88,15 @@ const T = {
     receipt: 'رسید', cash: 'نقد', udhaar: 'ادھار', add_to_udhaar: 'ادھار میں شامل',
     change_pin: 'پن تبدیل کریں', current_pin: 'موجودہ پن', new_pin: 'نیا پن (4 ہندسے)',
     confirm_pin: 'نئے پن کی تصدیق', save_pin: 'پن محفوظ کریں', back: '← واپس',
+    add_as_new_customer: 'نئے گاہک کے طور پر شامل کریں',
+    settle_udhaar: 'ادھار چکائیں',
+    customer_created: 'نیا گاہک شامل',
+    item_removed: 'آئٹم ہٹا دیا',
+    pin_changed: 'پن کامیابی سے بدل گیا!',
+    pin_no_match: 'پن مطابقت نہیں',
+    pin_invalid: 'پن 4 ہندسے ہونا ضروری ہے',
+    balance: 'بقایا',
+    quick_access: 'فوری رسائی',
   },
 };
 
@@ -85,7 +104,7 @@ const T = {
 // MAIN APP
 // ══════════════════════════════════════════════════════════════════
 const KhokaApp = (() => {
-  let lang = localStorage.getItem('khoka_lang') || 'en';
+  let lang = localStorage.getItem('khoka_lang') || 'ur';
   let isOwner = false;
   let currentScreen = 'bill';
   let categories = [];
@@ -122,6 +141,8 @@ const KhokaApp = (() => {
     localStorage.setItem('khoka_lang', lang);
     applyLang();
     renderBillGrid();
+    if (currentScreen === 'dashboard') loadDashboard();
+    if (currentScreen === 'insights') loadInsights();
   }
 
   // ── Toast ────────────────────────────────────────────────────
@@ -228,12 +249,12 @@ const KhokaApp = (() => {
     const errEl = document.getElementById('pin-change-error');
 
     if (newPin !== confirm) {
-      errEl.textContent = 'New PINs do not match';
+      errEl.textContent = t('pin_no_match');
       errEl.style.display = 'block';
       return;
     }
     if (!/^\d{4}$/.test(newPin)) {
-      errEl.textContent = 'PIN must be exactly 4 digits';
+      errEl.textContent = t('pin_invalid');
       errEl.style.display = 'block';
       return;
     }
@@ -252,11 +273,12 @@ const KhokaApp = (() => {
     correctPin = newPin;
     localStorage.setItem('khoka_pin', newPin);
     closeSheet('change-pin-sheet');
-    toast('PIN changed successfully');
+    toast(t('pin_changed'));
   }
 
   function enterOwnerMode() {
     document.getElementById('nav-bill').style.display = 'none';
+    document.getElementById('nav-worker-udhaar').style.display = 'none';
     document.getElementById('nav-dashboard').style.display = '';
     document.getElementById('nav-udhaar').style.display = '';
     document.getElementById('nav-sales').style.display = '';
@@ -269,6 +291,7 @@ const KhokaApp = (() => {
   function exitOwner() {
     isOwner = false;
     document.getElementById('nav-bill').style.display = '';
+    document.getElementById('nav-worker-udhaar').style.display = '';
     document.getElementById('nav-dashboard').style.display = 'none';
     document.getElementById('nav-udhaar').style.display = 'none';
     document.getElementById('nav-sales').style.display = 'none';
@@ -441,13 +464,13 @@ const KhokaApp = (() => {
       c.name.toLowerCase().includes(query.toLowerCase())
     );
     let html = matches.slice(0, 6).map(c =>
-      `<div class="search-result-item" onclick="KhokaApp.selectSaleCustomer(${c.id},'${escHtml(c.name)}')">${escHtml(c.name)}</div>`
+      `<div class="search-result-item" onclick="KhokaApp.selectSaleCustomer(${c.id},'${escHtml(c.name)}')">${escHtml(c.name)}${c.phone ? `<span class="text-muted" style="font-size:12px;margin:0 6px;">(${escHtml(c.phone)})</span>` : ''}</div>`
     ).join('');
     const exact = matches.find(c => c.name.toLowerCase() === query.toLowerCase());
     if (!exact) {
       html += `<div class="search-result-item" style="color:var(--green);font-style:italic;"
         onclick="KhokaApp.selectNewSaleCustomer('${escHtml(query)}')">
-        ➕ Add "${escHtml(query)}" as new customer
+        ➕ "${escHtml(query)}" — ${t('add_as_new_customer')}
       </div>`;
     }
     results.innerHTML = html;
@@ -490,7 +513,7 @@ const KhokaApp = (() => {
 
     closeSheet('sale-udhaar-sheet');
     clearBill();
-    toast(`${t('udhaar_saved')} — ${typedName}`);
+    setTimeout(() => toast(`${t('udhaar_saved')} — ${typedName}`), 80);
 
     // Save sale then udhaar
     const saleResp = await fetch('/api/sales', {
@@ -533,7 +556,7 @@ const KhokaApp = (() => {
     );
 
     let html = matches.slice(0, 6).map(c =>
-      `<div class="search-result-item" onclick="KhokaApp.selectUdhaarCustomer(${c.id}, '${escHtml(c.name)}')">${escHtml(c.name)}</div>`
+      `<div class="search-result-item" onclick="KhokaApp.selectUdhaarCustomer(${c.id}, '${escHtml(c.name)}')">${escHtml(c.name)}${c.phone ? `<span class="text-muted" style="font-size:12px;margin:0 6px;">(${escHtml(c.phone)})</span>` : ''}</div>`
     ).join('');
 
     // Always show "create new" option so worker can add on the fly
@@ -541,7 +564,7 @@ const KhokaApp = (() => {
     if (!exactMatch) {
       html += `<div class="search-result-item" style="color:var(--green);font-style:italic;"
         onclick="KhokaApp.selectNewUdhaarCustomer('${escHtml(query)}')">
-        ➕ Add "${escHtml(query)}" as new customer
+        ➕ "${escHtml(query)}" — ${t('add_as_new_customer')}
       </div>`;
     }
 
@@ -586,7 +609,7 @@ const KhokaApp = (() => {
       const newCust = await resp.json();
       allCustomers.push(newCust);
       custId = newCust.id;
-      toast(`Customer "${typedName}" created`);
+      toast(t('customer_created'));
     }
 
     await fetch('/api/udhaar', {
@@ -602,6 +625,70 @@ const KhokaApp = (() => {
     document.getElementById('udhaar-selected-customer').style.display = 'none';
     selectedUdhaarCustomer = null;
     toast(t('udhaar_saved'));
+  }
+
+  function showWorkerUdhaarTab(tab) {
+    document.querySelectorAll('#screen-worker-udhaar .tab-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.tab === tab));
+    document.getElementById('worker-udhaar-add-tab').style.display = tab === 'add' ? '' : 'none';
+    document.getElementById('worker-udhaar-settle-tab').style.display = tab === 'settle' ? '' : 'none';
+    if (tab === 'settle') {
+      fetch('/api/customers').then(r => r.json()).then(data => { allCustomers = data; });
+    }
+  }
+
+  function searchSettleCustomer(query) {
+    const results = document.getElementById('settle-search-results');
+    if (!query.trim()) { results.classList.remove('open'); return; }
+    const matches = allCustomers.filter(c =>
+      c.name.toLowerCase().includes(query.toLowerCase()) && (c.balance || 0) > 0
+    );
+    if (!matches.length) { results.innerHTML = ''; results.classList.remove('open'); return; }
+    results.innerHTML = matches.slice(0, 6).map(c => `
+      <div class="search-result-item" style="display:flex;justify-content:space-between;align-items:center;"
+        onclick="KhokaApp.selectSettleCustomer(${c.id}, '${escHtml(c.name)}', ${c.balance || 0})">
+        <span>${escHtml(c.name)}${c.phone ? `<span class="text-muted" style="font-size:12px;margin:0 6px;">(${escHtml(c.phone)})</span>` : ''}</span>
+        <span class="chip chip-red">Rs ${fmt(c.balance)}</span>
+      </div>`).join('');
+    results.classList.add('open');
+  }
+
+  function selectSettleCustomer(id, name, balance) {
+    document.getElementById('settle-cust-id').value = id;
+    document.getElementById('settle-search').value = name;
+    document.getElementById('settle-search-results').classList.remove('open');
+    document.getElementById('settle-selected').style.display = 'inline-block';
+    document.getElementById('settle-selected').textContent = `✓ ${name}`;
+    document.getElementById('settle-balance-row').style.display = '';
+    document.getElementById('settle-balance-val').textContent = `Rs ${fmt(balance)}`;
+    document.getElementById('settle-amount').max = balance;
+    document.getElementById('settle-amount').value = '';
+    document.getElementById('settle-amount').focus();
+  }
+
+  async function saveWorkerSettle() {
+    const custId = document.getElementById('settle-cust-id').value;
+    const amount = parseFloat(document.getElementById('settle-amount').value);
+    if (!custId) { toast(t('fill_required')); return; }
+    if (isNaN(amount) || amount <= 0) { toast(t('fill_required')); return; }
+    const resp = await fetch(`/api/customers/${custId}/pay`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount }),
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      toast(err.detail || t('fill_required'));
+      return;
+    }
+    document.getElementById('settle-search').value = '';
+    document.getElementById('settle-cust-id').value = '';
+    document.getElementById('settle-amount').value = '';
+    document.getElementById('settle-selected').style.display = 'none';
+    document.getElementById('settle-balance-row').style.display = 'none';
+    document.getElementById('settle-search-results').classList.remove('open');
+    allCustomers = await fetch('/api/customers').then(r => r.json());
+    toast(t('paid'));
   }
 
   async function addNewCustomer() {
@@ -650,6 +737,26 @@ const KhokaApp = (() => {
     const summaryEl = document.getElementById('dash-summary-text');
     summaryEl.innerHTML = formatAIText(summary.summary || 'Loading...');
     summaryEl.dir = lang === 'ur' ? 'rtl' : 'ltr';
+
+    // Quick-access shortcuts
+    const shortcuts = [
+      { icon: '💸', key: 'nav_udhaar', screen: 'udhaar' },
+      { icon: '📈', key: 'nav_sales', screen: 'sales' },
+      { icon: '💰', key: 'expenses', screen: 'expenses' },
+      { icon: '📦', key: 'item_manager', screen: 'items' },
+      { icon: '🛒', key: 'buy_list', screen: 'buylist' },
+      { icon: '🔍', key: 'ai_insights', screen: 'insights' },
+      { icon: '🤖', key: 'ask_claude', screen: 'ask' },
+      { icon: '🔑', key: 'change_pin', screen: null, action: 'showChangePinSheet' },
+    ];
+    const grid = document.getElementById('dash-shortcuts-grid');
+    if (grid) {
+      grid.innerHTML = shortcuts.map(s => `
+        <button class="shortcut-btn" onclick="${s.action ? `KhokaApp.${s.action}()` : `KhokaApp.showScreen('${s.screen}')`}">
+          <span class="shortcut-icon">${s.icon}</span>
+          <span class="shortcut-label">${t(s.key)}</span>
+        </button>`).join('');
+    }
   }
 
   function speakSummary() {
@@ -709,13 +816,13 @@ const KhokaApp = (() => {
       c.name.toLowerCase().includes(query.toLowerCase())
     );
     let html = matches.slice(0, 6).map(c =>
-      `<div class="search-result-item" onclick="KhokaApp.selectOwnerCustomer(${c.id}, '${escHtml(c.name)}')">${escHtml(c.name)}</div>`
+      `<div class="search-result-item" onclick="KhokaApp.selectOwnerCustomer(${c.id}, '${escHtml(c.name)}')">${escHtml(c.name)}${c.phone ? `<span class="text-muted" style="font-size:12px;margin:0 6px;">(${escHtml(c.phone)})</span>` : ''}</div>`
     ).join('');
     const exactMatch = matches.find(c => c.name.toLowerCase() === query.toLowerCase());
     if (!exactMatch) {
       html += `<div class="search-result-item" style="color:var(--green);font-style:italic;"
         onclick="KhokaApp.selectNewOwnerCustomer('${escHtml(query)}')">
-        ➕ Add "${escHtml(query)}" as new customer
+        ➕ "${escHtml(query)}" — ${t('add_as_new_customer')}
       </div>`;
     }
     results.innerHTML = html;
@@ -786,7 +893,7 @@ const KhokaApp = (() => {
           <div class="text-muted">${data.phone || ''}</div>
         </div>
         <div style="text-align:right;">
-          <div class="stat-label">Balance</div>
+          <div class="stat-label">${t('balance')}</div>
           <div class="stat-value ${data.balance > 0 ? 'red' : 'text-green'}">Rs ${fmt(data.balance)}</div>
         </div>
       </div>`;
@@ -1021,7 +1128,7 @@ const KhokaApp = (() => {
 
   async function removeItem(itemId) {
     await fetch(`/api/items/${itemId}`, { method: 'DELETE' });
-    toast('Item removed');
+    toast(t('item_removed'));
     loadItems();
   }
 
@@ -1351,6 +1458,11 @@ const KhokaApp = (() => {
       if (e.key === 'Enter') sendChat();
     });
 
+    // Scroll-to-top button
+    document.getElementById('screen-wrap').addEventListener('scroll', function () {
+      document.getElementById('scroll-top-btn').classList.toggle('visible', this.scrollTop > 180);
+    });
+
     // Touch swipe on bill items bar for a natural feel
     document.getElementById('bill-items-bar').style.overflowX = 'auto';
   }
@@ -1365,6 +1477,7 @@ const KhokaApp = (() => {
     selectNewUdhaarCustomer, saveWorkerUdhaar, addNewCustomer, loadDashboard,
     loadOwnerCustomers, showUdhaarTab, ownerSearchCustomers, selectOwnerCustomer,
     selectNewOwnerCustomer, saveOwnerUdhaar,
+    showWorkerUdhaarTab, searchSettleCustomer, selectSettleCustomer, saveWorkerSettle,
     showChangePinSheet, saveNewPin,
     showCustomerDetail, addPayment, loadSales, loadExpenses, addExpense,
     loadItems, showAddItemSheet, addItem, toggleLowStock, removeItem, toggleCigVariants,

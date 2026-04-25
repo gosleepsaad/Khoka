@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#5C1018">
@@ -24,6 +24,8 @@
     <div class="topbar-title">🏪 Khoka</div>
     <div class="topbar-actions">
       <button class="lang-btn" onclick="KhokaApp.toggleLang()" id="lang-toggle-btn">اردو</button>
+      <button class="ask-btn" onclick="window.location.reload()" title="Reload app" id="reload-btn">🔄</button>
+      <button class="ask-btn" onclick="KhokaApp.showScreen('ask')" title="Ask Claude" id="ask-topbar-btn">🤖</button>
       <button class="owner-btn" id="owner-toggle-btn" onclick="KhokaApp.openOwnerLogin()">
         <span data-i18n="owner_btn">Owner</span> 🔒
       </button>
@@ -51,50 +53,80 @@
       </button>
     </div>
 
-    <!-- Add Udhaar (screen: worker-udhaar) -->
+    <!-- Worker Udhaar (screen: worker-udhaar) -->
     <div id="screen-worker-udhaar" class="screen">
-      <div class="card">
-        <div class="card-title" data-i18n="add_udhaar">Add Udhaar</div>
-
-        <div class="form-group">
-          <label data-i18n="customer_name">Customer Name</label>
-          <div class="search-box">
-            <input type="text" id="udhaar-search" placeholder="Search customer..." autocomplete="off"
-              oninput="KhokaApp.searchCustomers(this.value)"
-              data-i18n-placeholder="search_customer">
-          </div>
-          <div class="search-results" id="udhaar-search-results"></div>
-          <input type="hidden" id="udhaar-customer-id">
-          <div id="udhaar-selected-customer" style="display:none;"
-            class="chip chip-green mt-8" id="udhaar-selected-label"></div>
-        </div>
-
-        <div class="form-group">
-          <label data-i18n="amount">Amount (Rs)</label>
-          <input type="number" id="udhaar-amount" placeholder="0" inputmode="numeric">
-        </div>
-
-        <div class="form-group">
-          <label data-i18n="note_optional">Note (optional)</label>
-          <input type="text" id="udhaar-note" placeholder="e.g. Cigarettes" data-i18n-placeholder="note_placeholder">
-        </div>
-
-        <button class="btn btn-primary" onclick="KhokaApp.saveWorkerUdhaar()" data-i18n="save_udhaar">
-          💾 Save Udhaar
-        </button>
+      <div class="tab-row">
+        <button class="tab-btn active" onclick="KhokaApp.showWorkerUdhaarTab('add')" data-tab="add" data-i18n="add_udhaar">Add Udhaar</button>
+        <button class="tab-btn" onclick="KhokaApp.showWorkerUdhaarTab('settle')" data-tab="settle" data-i18n="settle_udhaar">Settle Udhaar</button>
       </div>
 
-      <div class="card mt-8">
-        <div class="card-title" data-i18n="or_add_new_customer">Or Add New Customer</div>
-        <div class="form-group">
-          <input type="text" id="new-cust-name" placeholder="Customer name" data-i18n-placeholder="customer_name">
+      <!-- Add Udhaar tab -->
+      <div id="worker-udhaar-add-tab">
+        <div class="card">
+          <div class="form-group">
+            <label data-i18n="customer_name">Customer Name</label>
+            <div class="search-box">
+              <input type="text" id="udhaar-search" placeholder="Search customer..." autocomplete="off"
+                oninput="KhokaApp.searchCustomers(this.value)"
+                data-i18n-placeholder="search_customer">
+            </div>
+            <div class="search-results" id="udhaar-search-results"></div>
+            <input type="hidden" id="udhaar-customer-id">
+            <div id="udhaar-selected-customer" style="display:none;" class="chip chip-green mt-8"></div>
+          </div>
+          <div class="form-group">
+            <label data-i18n="amount">Amount (Rs)</label>
+            <input type="number" id="udhaar-amount" placeholder="0" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label data-i18n="note_optional">Note (optional)</label>
+            <input type="text" id="udhaar-note" placeholder="e.g. Cigarettes" data-i18n-placeholder="note_placeholder">
+          </div>
+          <button class="btn btn-primary" onclick="KhokaApp.saveWorkerUdhaar()" data-i18n="save_udhaar">
+            💾 Save Udhaar
+          </button>
         </div>
-        <div class="form-group">
-          <input type="tel" id="new-cust-phone" placeholder="Phone number" data-i18n-placeholder="phone">
+        <div class="card mt-8">
+          <div class="card-title" data-i18n="or_add_new_customer">Or Add New Customer</div>
+          <div class="form-group">
+            <input type="text" id="new-cust-name" placeholder="Customer name" data-i18n-placeholder="customer_name">
+          </div>
+          <div class="form-group">
+            <input type="tel" id="new-cust-phone" placeholder="Phone number" data-i18n-placeholder="phone">
+          </div>
+          <button class="btn btn-secondary" onclick="KhokaApp.addNewCustomer()">
+            <span data-i18n="add_customer">+ Add Customer</span>
+          </button>
         </div>
-        <button class="btn btn-secondary" onclick="KhokaApp.addNewCustomer()">
-          <span data-i18n="add_customer">+ Add Customer</span>
-        </button>
+      </div>
+
+      <!-- Settle Udhaar tab -->
+      <div id="worker-udhaar-settle-tab" style="display:none;">
+        <div class="card">
+          <div class="form-group">
+            <label data-i18n="customer_name">Customer Name</label>
+            <div class="search-box">
+              <input type="text" id="settle-search" placeholder="Search customer..." autocomplete="off"
+                oninput="KhokaApp.searchSettleCustomer(this.value)"
+                data-i18n-placeholder="search_customer">
+            </div>
+            <div class="search-results" id="settle-search-results"></div>
+            <input type="hidden" id="settle-cust-id">
+            <div id="settle-selected" style="display:none;" class="chip chip-green mt-8"></div>
+          </div>
+          <div id="settle-balance-row" style="display:none;" class="flex-between mb-8"
+            style="padding:8px 0;border-bottom:1px solid var(--border);">
+            <span data-i18n="balance" style="font-weight:600;color:var(--text-muted);">Balance</span>
+            <span id="settle-balance-val" class="fw-bold text-red"></span>
+          </div>
+          <div class="form-group">
+            <label data-i18n="amount">Amount (Rs)</label>
+            <input type="number" id="settle-amount" inputmode="numeric" placeholder="0">
+          </div>
+          <button class="btn btn-primary" onclick="KhokaApp.saveWorkerSettle()" data-i18n="settle_udhaar">
+            ✓ Settle Udhaar
+          </button>
+        </div>
       </div>
     </div>
 
@@ -137,6 +169,11 @@
       <div class="card">
         <div class="card-title" data-i18n="top_items_week">Top Items This Week</div>
         <div id="dash-top-items"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" data-i18n="quick_access">Quick Access</div>
+        <div class="dashboard-shortcuts" id="dash-shortcuts-grid"></div>
       </div>
     </div>
 
@@ -314,9 +351,13 @@
   <!-- Bottom Navigation -->
   <nav class="bottom-nav" id="bottom-nav">
     <!-- Worker Nav -->
-    <button class="nav-btn active" id="nav-bill" onclick="KhokaApp.showScreen('bill')" data-i18n="bill">
+    <button class="nav-btn active" id="nav-bill" onclick="KhokaApp.showScreen('bill')">
       <span class="icon">🧾</span>
       <span data-i18n="nav_bill">Bill</span>
+    </button>
+    <button class="nav-btn" id="nav-worker-udhaar" onclick="KhokaApp.showScreen('worker-udhaar')">
+      <span class="icon">💸</span>
+      <span data-i18n="nav_udhaar">Udhaar</span>
     </button>
     <!-- Owner Nav (hidden by default) -->
     <button class="nav-btn hidden-owner" id="nav-dashboard" onclick="KhokaApp.showScreen('dashboard')" style="display:none;">
@@ -567,6 +608,9 @@
 
 <!-- Toast -->
 <div id="toast"></div>
+
+<!-- Scroll to top -->
+<button id="scroll-top-btn" onclick="document.getElementById('screen-wrap').scrollTop=0" title="صفحے کے اوپر جائیں">↑</button>
 
 <script src="/static/app.js"></script>
 </body>

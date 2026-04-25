@@ -4,8 +4,8 @@
   "description": "Business management for khoka & pan shop owners",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1B5E20",
-  "theme_color": "#1B5E20",
+  "background_color": "#5C1018",
+  "theme_color": "#5C1018",
   "orientation": "portrait",
   "icons": [
     {
