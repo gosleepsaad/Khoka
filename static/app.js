@@ -98,6 +98,7 @@ const KhokaApp = (() => {
   let currentDetailCustomer = null;
   let speechRecognition = null;
   let isListening = false;
+  let currentDetailBalance = 0;
 
   // ── i18n ─────────────────────────────────────────────────────
   function t(key) { return T[lang][key] || T.en[key] || key; }
@@ -773,6 +774,10 @@ const KhokaApp = (() => {
     currentDetailCustomer = customerId;
     showScreen('customer-detail');
     const data = await fetch(`/api/customers/${customerId}/transactions`).then(r => r.json());
+    currentDetailBalance = data.balance || 0;
+    const payInput = document.getElementById('pay-amount');
+    payInput.max = currentDetailBalance;
+    payInput.placeholder = `Rs 0 – ${fmt(currentDetailBalance)}`;
 
     document.getElementById('customer-detail-header').innerHTML = `
       <div class="flex-between">
@@ -806,6 +811,10 @@ const KhokaApp = (() => {
   async function addPayment() {
     const amount = parseFloat(document.getElementById('pay-amount').value);
     if (isNaN(amount) || amount <= 0) { toast(t('fill_required')); return; }
+    if (amount > currentDetailBalance) {
+      toast(`Max payment: Rs ${fmt(currentDetailBalance)}`);
+      return;
+    }
     await fetch(`/api/customers/${currentDetailCustomer}/pay`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
